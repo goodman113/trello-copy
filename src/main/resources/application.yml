@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: trello-copy
+  datasource:
+    url: jdbc:postgresql://localhost:5432/trello_copy
+    username: postgres
+    password: root123
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 453480193562-bccu387517657394um61710glunpjutc.apps.googleusercontent.com
+            client-secret: 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
+            scope:
+              - email
+              - profile
+          github:
+            client-id: Ov23liZVwwvcKvZ56E6j
+            client-secret: ee4d59fe5afd4c8d99707c8d3d5a8b51c6070546
+            scope:
+              - read:user
+              - user:email

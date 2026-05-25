@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account — CollabHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0b0d12;
+      --surface: #12151c;
+      --surface-hover: #1a1e28;
+      --border: #262b38;
+      --border-focus: #6366f1;
+      --text: #e8edf5;
+      --text-secondary: #8b90a0;
+      --text-placeholder: #535866;
+      --accent: #6366f1;
+      --accent-hover: #5558e6;
+      --error: #f87171;
+      --success: #34d399;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .split {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    .brand {
+      display: none;
+      flex: 1;
+      background: linear-gradient(160deg, #0f1119 0%, #151929 50%, #0f1119 100%);
+      position: relative;
+      overflow: hidden;
+      padding: 48px;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    @media (min-width: 900px) {
+      .brand { display: flex; }
+    }
+
+    .brand::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 500px 500px at 20% 30%, rgba(99,102,241,.15), transparent),
+        radial-gradient(ellipse 400px 400px at 70% 80%, rgba(99,102,241,.08), transparent);
+      pointer-events: none;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 22px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-logo svg { width: 32px; height: 32px; }
+
+    .brand-content {
+      position: relative;
+      z-index: 1;
+      max-width: 420px;
+    }
+
+    .brand-content h1 {
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .brand-content p {
+      color: var(--text-secondary);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .brand-footer {
+      position: relative;
+      z-index: 1;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .form-side {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .form-header {
+      margin-bottom: 28px;
+    }
+
+    .form-header h2 {
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .form-header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-top: 6px;
+    }
+
+    .name-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 18px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 13px 16px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .25s, box-shadow .25s;
+    }
+
+    .input-group input::placeholder {
+      color: var(--text-placeholder);
+    }
+
+    .input-group input:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.2);
+    }
+
+    .input-group .error-text {
+      font-size: 12px;
+      color: var(--error);
+      margin-top: 4px;
+      display: none;
+    }
+
+    .input-group.error .error-text { display: block; }
+    .input-group.error input {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(248,113,113,.15);
+    }
+
+    .input-group.success input {
+      border-color: var(--success);
+    }
+
+    .toggle-pw {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      transition: color .2s;
+    }
+
+    .toggle-pw:hover { color: var(--text); }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .2s, transform .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-primary .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+
+    .btn-primary.loading .spinner { display: block; }
+    .btn-primary.loading .btn-text { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 22px 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .oauth-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-oauth {
+      flex: 1;
+      padding: 12px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background .2s, border-color .2s;
+    }
+
+    .btn-oauth:hover {
+      background: var(--surface-hover);
+      border-color: var(--text-placeholder);
+    }
+
+    .btn-oauth svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 18px;
+      display: none;
+    }
+
+    .alert.error {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: rgba(248,113,113,.1);
+      border: 1px solid rgba(248,113,113,.25);
+      color: var(--error);
+    }
+
+    .alert.error svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    .signin-prompt {
+      text-align: center;
+      margin-top: 22px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .signin-prompt a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .signin-prompt a:hover { text-decoration: underline; }
+
+    .terms {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+
+    .terms a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .terms a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="split">
+
+  <!-- ─── Left: Branding ─── -->
+  <section class="brand">
+    <div class="brand-logo">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="12" height="12" rx="3" fill="#6366f1"/>
+        <rect x="18" y="2" width="12" height="12" rx="3" fill="#818cf8" opacity=".7"/>
+        <rect x="2" y="18" width="12" height="12" rx="3" fill="#818cf8" opacity=".7"/>
+        <rect x="18" y="18" width="12" height="12" rx="3" fill="#6366f1"/>
+      </svg>
+      CollabHub
+    </div>
+    <div class="brand-content">
+      <h1>Start building together</h1>
+      <p>Create your free account and join thousands of teams already collaborating in real time.</p>
+    </div>
+    <div class="brand-footer">
+      &copy; 2026 CollabHub. All rights reserved.
+    </div>
+  </section>
+
+  <!-- ─── Right: Form ─── -->
+  <main class="form-side">
+    <div class="form-container">
+
+      <div class="form-header">
+        <h2>Create an account</h2>
+        <p>Fill in the details below to get started</p>
+      </div>
+
+      <!-- Alert -->
+      <div class="alert error" id="alert" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="alert-text"></span>
+      </div>
+
+      <form id="signup-form" novalidate autocomplete="off">
+
+        <!-- Full Name + Username -->
+        <div class="name-row">
+          <div class="input-group" data-field="fullName">
+            <label for="fullName">Full Name</label>
+            <input
+              type="text"
+              id="fullName"
+              name="fullName"
+              placeholder="Jane Doe"
+              autocomplete="name"
+              required
+            />
+            <div class="error-text">Full name is required</div>
+          </div>
+          <div class="input-group" data-field="username">
+            <label for="username">Username</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              placeholder="janedoe"
+              autocomplete="username"
+              required
+              minlength="3"
+            />
+            <div class="error-text">Username must be at least 3 characters</div>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="input-group" data-field="email">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@company.com"
+            autocomplete="email"
+            required
+          />
+          <div class="error-text">Please enter a valid email address</div>
+        </div>
+
+        <!-- Password -->
+        <div class="input-group" data-field="password">
+          <label for="password">Password</label>
+          <div style="position:relative">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Create a password"
+              autocomplete="new-password"
+              required
+              minlength="8"
+            />
+            <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Toggle password visibility">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="error-text">Password must be at least 8 characters</div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-primary" id="signup-btn">
+          <span class="spinner"></span>
+          <span class="btn-text">Create Account</span>
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="divider">or continue with</div>
+
+      <!-- OAuth -->
+      <div class="oauth-row">
+        <button class="btn-oauth" id="oauth-google" type="button">
+          <svg viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </button>
+        <button class="btn-oauth" id="oauth-github" type="button">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </button>
+      </div>
+
+      <p class="terms">
+        By creating an account you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </p>
+
+      <p class="signin-prompt">
+        Already have an account? <a href="login.html">Sign in</a>
+      </p>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (() => {
+    const form = document.getElementById('signup-form');
+    const fullNameInput = document.getElementById('fullName');
+    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('signup-btn');
+    const alertBox = document.getElementById('alert');
+    const alertText = document.getElementById('alert-text');
+    const togglePw = document.getElementById('toggle-pw');
+
+    const fields = {
+      fullName: document.querySelector('[data-field="fullName"]'),
+      username: document.querySelector('[data-field="username"]'),
+      email: document.querySelector('[data-field="email"]'),
+      password: document.querySelector('[data-field="password"]'),
+    };
+
+    /* ─── Password toggle ─── */
+    togglePw.addEventListener('click', () => {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      togglePw.innerHTML = isPassword
+        ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    });
+
+    /* ─── Validation ─── */
+    function validateEmail(val) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    }
+
+    function setState(fieldEl, state) {
+      fieldEl.classList.remove('error', 'success');
+      if (state) fieldEl.classList.add(state);
+    }
+
+    function showError(msg) {
+      alertText.textContent = msg;
+      alertBox.classList.add('error');
+    }
+
+    function hideAlert() {
+      alertBox.classList.remove('error');
+    }
+
+    /* ─── Submit ─── */
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAlert();
+
+      const fullName = fullNameInput.value.trim();
+      const username = usernameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      let valid = true;
+
+      if (!fullName) { setState(fields.fullName, 'error'); valid = false; }
+      else setState(fields.fullName, 'success');
+
+      if (username.length < 3) { setState(fields.username, 'error'); valid = false; }
+      else setState(fields.username, 'success');
+
+      if (!validateEmail(email)) { setState(fields.email, 'error'); valid = false; }
+      else setState(fields.email, 'success');
+
+      if (password.length < 8) { setState(fields.password, 'error'); valid = false; }
+      else setState(fields.password, 'success');
+
+      if (!valid) return;
+
+      submitBtn.classList.add('loading');
+      submitBtn.disabled = true;
+
+      try {
+        /*
+         * ─── API REQUEST ──────────────────────────────────
+         * Endpoint: POST /api/auth/sign-up
+         *
+         * On success the backend sets an HttpOnly session cookie
+         * (auto-login) and returns the user.
+         *
+         * Request body:
+         * {
+         *   "username": "janedoe",
+         *   "password": "secure-password",
+         *   "email": "jane@company.com",
+         *   "fullName": "Jane Doe"
+         * }
+         *
+         * Success response (201):
+         * {
+         *   "message": "Account created successfully.",
+         *   "user": {
+         *     "id": "uuid",
+         *     "username": "janedoe",
+         *     "email": "jane@company.com",
+         *     "fullName": "Jane Doe",
+         *     "avatarUrl": "https://..."
+         *   }
+         * }
+         *
+         * Error response (409 — conflict):
+         * {
+         *   "message": "A user with this email or username already exists."
+         * }
+         *
+         * Error response (422):
+         * {
+         *   "message": "Validation error."
+         * }
+         *
+         * Error response (500):
+         * {
+         *   "message": "An unexpected error occurred. Please try again."
+         * }
+         */
+
+        const response = await fetch('/api/auth/sign-up', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, email, fullName }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showError(data.message || 'Registration failed. Please try again.');
+          return;
+        }
+
+        window.location.href = '/dashboard';
+
+      } catch (err) {
+        showError('Network error. Check your connection and try again.');
+      } finally {
+        submitBtn.classList.remove('loading');
+        submitBtn.disabled = false;
+      }
+    });
+
+    /* ─── OAuth ─── */
+    document.getElementById('oauth-google').addEventListener('click', () => {
+      window.location.href = '/oauth2/authorization/google';
+    });
+
+    document.getElementById('oauth-github').addEventListener('click', () => {
+      window.location.href = '/oauth2/authorization/github';
+    });
+  })();
+</script>
+</body>
+</html>

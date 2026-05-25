@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlowBoard — Real-Time Collaborative Task Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border))',
+                        ring: 'hsl(var(--ring))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: {
+                            DEFAULT: 'hsl(var(--primary))',
+                            foreground: 'hsl(var(--primary-foreground))',
+                        },
+                        secondary: {
+                            DEFAULT: 'hsl(var(--secondary))',
+                            foreground: 'hsl(var(--secondary-foreground))',
+                        },
+                        muted: {
+                            DEFAULT: 'hsl(var(--muted))',
+                            foreground: 'hsl(var(--muted-foreground))',
+                        },
+                        accent: {
+                            DEFAULT: 'hsl(var(--accent))',
+                            foreground: 'hsl(var(--accent-foreground))',
+                        },
+                        card: {
+                            DEFAULT: 'hsl(var(--card))',
+                            foreground: 'hsl(var(--card-foreground))',
+                        },
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'fade-in-up': 'fadeInUp 0.6s ease-out',
+                        'slide-in-right': 'slideInRight 0.5s ease-out',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulseSlow 4s ease-in-out infinite',
+                        'grid-flow': 'gridFlow 20s linear infinite',
+                        'shimmer': 'shimmer 2s linear infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideInRight: {
+                            '0%': { opacity: '0', transform: 'translateX(20px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        pulseSlow: {
+                            '0%, 100%': { opacity: '0.4' },
+                            '50%': { opacity: '0.8' },
+                        },
+                        gridFlow: {
+                            '0%': { transform: 'translateY(0)' },
+                            '100%': { transform: 'translateY(-50%)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-200% 0' },
+                            '100%': { backgroundPosition: '200% 0' },
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        :root {
+            --background: 240 10% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 240 10% 5.9%;
+            --card-foreground: 0 0% 98%;
+            --primary: 252 87% 68%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 240 5% 14.9%;
+            --secondary-foreground: 0 0% 98%;
+            --muted: 240 5% 14.9%;
+            --muted-foreground: 240 5% 64.9%;
+            --accent: 240 5% 14.9%;
+            --accent-foreground: 0 0% 98%;
+            --border: 240 5% 24.9%;
+            --ring: 252 87% 68%;
+            --radius: 0.75rem;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            overflow-x: hidden;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, hsl(252 87% 68%), hsl(190 87% 68%), hsl(252 87% 68%));
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        .gradient-border {
+            position: relative;
+            background: hsl(var(--card));
+            border-radius: var(--radius);
+        }
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: calc(var(--radius) + 1px);
+            background: linear-gradient(135deg, hsl(252 87% 68%), transparent, hsl(190 87% 68%));
+            z-index: -1;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+        .gradient-border:hover::before { opacity: 1; }
+
+        .glow {
+            box-shadow: 0 0 40px hsl(252 87% 68% / 0.15);
+        }
+
+        .bg-grid {
+            background-image:
+                linear-gradient(hsl(240 5% 14.9% / 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, hsl(240 5% 14.9% / 0.3) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        .bg-radial-gradient {
+            background: radial-gradient(ellipse at 50% 0%, hsl(252 87% 68% / 0.08) 0%, transparent 60%);
+        }
+
+        .glass {
+            background: hsl(240 10% 5.9% / 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid hsl(var(--border));
+        }
+
+        .nav-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background: hsl(240 10% 3.9% / 0.8);
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px hsl(252 87% 68% / 0.1);
+        }
+
+        .animated-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: hsl(252 87% 68%);
+            margin: 0 2px;
+            animation: typing 1.4s ease-in-out infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .pricing-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pricing-card.featured {
+            border: 1px solid hsl(252 87% 68% / 0.3);
+            transform: scale(1.02);
+        }
+        .pricing-card.featured:hover {
+            transform: scale(1.04);
+        }
+
+        .testimonial-card {
+            animation: testimonialScroll 30s linear infinite;
+        }
+        @keyframes testimonialScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 0.875rem;
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 30px hsl(252 87% 68% / 0.3);
+        }
+
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: hsl(var(--foreground));
+            transition: all 0.2s ease;
+            border: 1px solid hsl(var(--border));
+            cursor: pointer;
+            text-decoration: none;
+            background: transparent;
+        }
+        .btn-ghost:hover {
+            background: hsl(var(--secondary));
+            border-color: hsl(var(--ring));
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .pricing-card.featured { transform: none; }
+            .pricing-card.featured:hover { transform: translateY(-4px); }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+        ::-webkit-scrollbar-thumb {
+            background: hsl(var(--muted));
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="antialiased">
+
+<!-- ========== NAVBAR ========== -->
+<header class="fixed top-0 left-0 right-0 z-50 nav-blur border-b border-[hsl(var(--border))]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(252,87%,68%)] to-[hsl(190,87%,68%)] flex items-center justify-center text-sm font-bold">
+                    F
+                </div>
+                <span class="text-lg font-semibold">FlowBoard</span>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-8">
+                <a href="#features" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Features</a>
+                <a href="#pricing" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Pricing</a>
+                <a href="#testimonials" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Testimonials</a>
+                <a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Docs</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="/api/auth/sign-in" class="btn-ghost text-sm hidden sm:inline-flex">Sign In</a>
+                <a href="/api/auth/sign-up" class="btn-primary text-sm">Get Started</a>
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-md text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))] transition-colors">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="mobile-menu" class="md:hidden hidden border-t border-[hsl(var(--border))] px-4 py-4">
+        <div class="flex flex-col gap-4">
+            <a href="#features" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Features</a>
+            <a href="#pricing" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Pricing</a>
+            <a href="#testimonials" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Testimonials</a>
+            <a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Docs</a>
+            <a href="/api/auth/sign-in" class="btn-ghost text-sm text-center w-full">Sign In</a>
+            <a href="/api/auth/sign-up" class="btn-primary text-sm text-center w-full">Get Started</a>
+        </div>
+    </div>
+</header>
+
+<!-- ========== HERO ========== -->
+<section class="relative min-h-screen flex items-center overflow-hidden pt-16">
+    <div class="absolute inset-0 bg-radial-gradient pointer-events-none"></div>
+    <div class="absolute inset-0 bg-grid pointer-events-none opacity-30"></div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div class="space-y-8">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Real-time sync is live
+                </div>
+
+                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight">
+                    Move work
+                    <br />
+                    <span class="gradient-text">forward, together</span>
+                </h1>
+
+                <p class="text-lg sm:text-xl text-[hsl(var(--muted-foreground))] max-w-xl leading-relaxed">
+                    FlowBoard brings task management and real-time team collaboration into one seamless experience. Plan, track, and ship — all in sync.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <a href="/api/auth/sign-up" class="btn-primary text-base px-8 py-4">
+                        Start Free Trial
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </a>
+                    <a href="#demo" class="btn-ghost text-base px-8 py-4">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        Watch Demo
+                    </a>
+                </div>
+
+                <div class="flex items-center gap-6 text-sm text-[hsl(var(--muted-foreground))]">
+                    <div class="flex -space-x-2">
+                        <div class="w-8 h-8 rounded-full border-2 border-[hsl(var(--background))] bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-[10px] font-bold">JD</div>
+                        <div class="w-8 h-8 rounded-full border-2 border-[hsl(var(--background))] bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[10px] font-bold">AK</div>
+                        <div class="w-8 h-8 rounded-full border-2 border-[hsl(var(--background))] bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-[10px] font-bold">MR</div>
+                        <div class="w-8 h-8 rounded-full border-2 border-[hsl(var(--background))] bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-[10px] font-bold">+2k</div>
+                    </div>
+                    <span>Join <strong class="text-[hsl(var(--foreground))]">2,400+</strong> teams already shipping faster</span>
+                </div>
+            </div>
+
+            <!-- Hero Preview -->
+            <div class="relative hidden lg:block">
+                <div class="absolute -inset-4 bg-gradient-to-r from-[hsl(252,87%,68%)]/20 to-[hsl(190,87%,68%)]/20 rounded-3xl blur-3xl"></div>
+                <div class="relative glass rounded-2xl p-4 overflow-hidden animate-float">
+                    <div class="flex items-center gap-2 mb-4 pb-4 border-b border-[hsl(var(--border))]">
+                        <div class="flex gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <div class="flex-1 text-center">
+                            <span class="text-xs font-medium text-[hsl(var(--muted-foreground))]">product-launch · FlowBoard</span>
+                        </div>
+                    </div>
+
+                    <!-- Board Columns -->
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-[hsl(var(--secondary))] rounded-xl p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold">To Do</span>
+                                <span class="text-[10px] text-[hsl(var(--muted-foreground))]">3</span>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-[hsl(var(--border))]">
+                                <div class="w-3/4 h-2 rounded bg-[hsl(252,87%,68%)]/30 mb-2"></div>
+                                <div class="w-full h-2 rounded bg-[hsl(var(--muted))]/50"></div>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-[hsl(var(--border))]">
+                                <div class="w-1/2 h-2 rounded bg-[hsl(190,87%,68%)]/30 mb-2"></div>
+                                <div class="w-full h-2 rounded bg-[hsl(var(--muted))]/50"></div>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-[hsl(var(--border))]/50">
+                                <div class="flex items-center gap-1 mb-2">
+                                    <div class="animated-dot bg-green-500"></div>
+                                    <span class="text-[10px] text-green-500 font-medium">Editing...</span>
+                                </div>
+                                <div class="w-2/3 h-2 rounded bg-[hsl(var(--muted))]/50"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[hsl(var(--secondary))] rounded-xl p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold">In Progress</span>
+                                <span class="text-[10px] text-[hsl(var(--muted-foreground))]">2</span>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-[hsl(var(--border))] ring-1 ring-[hsl(252,87%,68%)]/30">
+                                <div class="w-full h-2 rounded bg-[hsl(252,87%,68%)]/30 mb-2"></div>
+                                <div class="w-2/3 h-2 rounded bg-[hsl(var(--muted))]/50 mb-2"></div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex -space-x-1">
+                                        <div class="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border border-[hsl(var(--background))]"></div>
+                                        <div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 border border-[hsl(var(--background))]"></div>
+                                    </div>
+                                    <div class="typing-indicator flex">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-[hsl(var(--border))]/50">
+                                <div class="w-3/4 h-2 rounded bg-[hsl(var(--muted))]/50 mb-2"></div>
+                                <div class="w-1/2 h-2 rounded bg-[hsl(var(--muted))]/50"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[hsl(var(--secondary))] rounded-xl p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold">Done</span>
+                                <span class="text-[10px] text-green-500 font-medium">4</span>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-green-500/20">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="hsl(142,76%,50%)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                    <div class="w-2/3 h-2 rounded bg-green-500/20"></div>
+                                </div>
+                                <div class="w-1/2 h-2 rounded bg-[hsl(var(--muted))]/30"></div>
+                            </div>
+                            <div class="bg-[hsl(var(--card))] rounded-lg p-2.5 border border-green-500/20">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="hsl(142,76%,50%)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                    <div class="w-full h-2 rounded bg-green-500/20"></div>
+                                </div>
+                                <div class="w-2/3 h-2 rounded bg-[hsl(var(--muted))]/30"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Feed -->
+                    <div class="bg-[hsl(var(--secondary))] rounded-xl p-3 space-y-2">
+                        <div class="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Live Activity</div>
+                        <div class="flex items-center gap-2 animate-slide-in-right">
+                            <div class="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white">JD</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-medium">Jane</span>
+                                    <span class="text-[10px] text-[hsl(var(--muted-foreground))]">moved</span>
+                                    <span class="text-xs font-medium text-[hsl(252,87%,68%)]">Design handoff</span>
+                                    <span class="text-[10px] text-[hsl(var(--muted-foreground))]">to</span>
+                                    <span class="text-xs font-medium text-[hsl(190,87%,68%)]">In Progress</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-[hsl(var(--muted-foreground))] flex-shrink-0">now</span>
+                        </div>
+                        <div class="flex items-center gap-2 opacity-70">
+                            <div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-white">AK</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-medium">Alex</span>
+                                    <span class="text-[10px] text-[hsl(var(--muted-foreground))]">commented on</span>
+                                    <span class="text-xs font-medium text-[hsl(252,87%,68%)]">API schema</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-[hsl(var(--muted-foreground))] flex-shrink-0">1m</span>
+                        </div>
+                    </div>
+
+                    <!-- Sync indicator -->
+                    <div class="absolute top-2 right-2 flex items-center gap-1.5 bg-green-500/10 text-green-500 text-[10px] font-medium px-2 py-1 rounded-full">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                        Live
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scroll indicator -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block">
+            <div class="flex flex-col items-center gap-2 text-[hsl(var(--muted-foreground))]">
+                <span class="text-xs">Scroll to explore</span>
+                <div class="w-5 h-8 rounded-full border border-[hsl(var(--border))] flex justify-center pt-1.5">
+                    <div class="w-1 h-2 rounded-full bg-[hsl(var(--muted-foreground))] animate-bounce"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== TRUSTED BY ========== -->
+<section class="py-16 border-y border-[hsl(var(--border))]/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="text-xs font-semibold uppercase tracking-widest text-center text-[hsl(var(--muted-foreground))] mb-8">Trusted by engineering teams at</p>
+        <div class="flex flex-wrap justify-center items-center gap-8 md:gap-16">
+            <div class="text-[hsl(var(--muted-foreground))] text-xl font-bold opacity-40 hover:opacity-70 transition-opacity">ACME</div>
+            <div class="text-[hsl(var(--muted-foreground))] text-xl font-bold opacity-40 hover:opacity-70 transition-opacity">PULSE</div>
+            <div class="text-[hsl(var(--muted-foreground))] text-xl font-bold opacity-40 hover:opacity-70 transition-opacity">NOVA</div>
+            <div class="text-[hsl(var(--muted-foreground))] text-xl font-bold opacity-40 hover:opacity-70 transition-opacity">CORE</div>
+            <div class="text-[hsl(var(--muted-foreground))] text-xl font-bold opacity-40 hover:opacity-70 transition-opacity">EDGE</div>
+            <div class="text-[hsl(var(--muted-foreground))] text-xl font-bold opacity-40 hover:opacity-70 transition-opacity">VAULT</div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== FEATURES ========== -->
+<section id="features" class="py-24 relative">
+    <div class="absolute inset-0 bg-radial-gradient opacity-50 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                Everything you need
+            </div>
+            <h2 class="text-3xl md:text-5xl font-bold">Built for <span class="gradient-text">real-time</span> collaboration</h2>
+            <p class="text-lg text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto">
+                From instant WebSocket sync to granular activity history, FlowBoard keeps your team in lockstep.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Feature 1: Real-time updates -->
+            <div class="gradient-border rounded-xl p-6 card-hover">
+                <div class="feature-icon bg-[hsl(252,87%,68%)]/10 text-[hsl(252,87%,68%)] mb-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Real-Time Updates</h3>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Changes propagate instantly across all connected clients via WebSocket. No page refreshes, no polling, no stale data.
+                </p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-[hsl(252,87%,68%)] font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[hsl(252,87%,68%)]"></span>
+                    Sub-50ms latency
+                </div>
+            </div>
+
+            <!-- Feature 2: Team Collaboration -->
+            <div class="gradient-border rounded-xl p-6 card-hover">
+                <div class="feature-icon bg-[hsl(190,87%,68%)]/10 text-[hsl(190,87%,68%)] mb-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Team Collaboration</h3>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Co-edit cards, assign tasks, mention teammates, and discuss in threaded comments — all within the same view.
+                </p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-[hsl(190,87%,68%)] font-medium">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Multi-cursor editing
+                </div>
+            </div>
+
+            <!-- Feature 3: WebSocket Sync -->
+            <div class="gradient-border rounded-xl p-6 card-hover">
+                <div class="feature-icon bg-[hsl(330,87%,68%)]/10 text-[hsl(330,87%,68%)] mb-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">WebSocket Powered Sync</h3>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Bidirectional, persistent connections ensure every drag, drop, edit, and comment is synced in real time.
+                </p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-[hsl(330,87%,68%)] font-medium">
+                    Last write wins with merge support
+                </div>
+            </div>
+
+            <!-- Feature 4: Notifications -->
+            <div class="gradient-border rounded-xl p-6 card-hover">
+                <div class="feature-icon bg-[hsl(142,76%,50%)]/10 text-[hsl(142,76%,50%)] mb-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Smart Notifications</h3>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Get notified on mentions, assignments, due dates, and status changes. In-app, email, or push — your choice.
+                </p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-[hsl(142,76%,50%)] font-medium">
+                    Configurable notification channels
+                </div>
+            </div>
+
+            <!-- Feature 5: Activity History -->
+            <div class="gradient-border rounded-xl p-6 card-hover">
+                <div class="feature-icon bg-[hsl(40,87%,68%)]/10 text-[hsl(40,87%,68%)] mb-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Activity History</h3>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Every change is recorded. Replay the full timeline of who did what and when — with full diff visibility.
+                </p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-[hsl(40,87%,68%)] font-medium">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+                    </svg>
+                    90-day history included
+                </div>
+            </div>
+
+            <!-- Feature 6: Integrations -->
+            <div class="gradient-border rounded-xl p-6 card-hover">
+                <div class="feature-icon bg-[hsl(0,87%,68%)]/10 text-[hsl(0,87%,68%)] mb-4">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-2">Powerful Integrations</h3>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Connect with GitHub, GitLab, Slack, Jira, and 50+ tools. Automate workflows with webhooks and REST API.
+                </p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-[hsl(0,87%,68%)] font-medium">
+                    REST & WebSocket APIs
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== DEEP DIVE SECTION ========== -->
+<section class="py-24 border-t border-[hsl(var(--border))]/50 relative overflow-hidden">
+    <div class="absolute inset-0 bg-grid opacity-20 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+            <div class="space-y-6">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    Powered by WebSockets
+                </div>
+                <h2 class="text-3xl md:text-4xl font-bold leading-tight">
+                    See changes<br />the moment they happen
+                </h2>
+                <p class="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed">
+                    Unlike traditional tools that rely on manual refresh or polling, FlowBoard maintains a persistent WebSocket connection so every team member sees updates instantly — whether they're across the office or across the globe.
+                </p>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-[hsl(252,87%,68%)] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span class="text-sm text-[hsl(var(--muted-foreground))]"><strong class="text-[hsl(var(--foreground))]">Real-time cursors</strong> — See where your teammates are typing</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-[hsl(252,87%,68%)] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span class="text-sm text-[hsl(var(--muted-foreground))]"><strong class="text-[hsl(var(--foreground))]">Instant sync</strong> — Drag a card; everyone sees it move</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-[hsl(252,87%,68%)] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span class="text-sm text-[hsl(var(--muted-foreground))]"><strong class="text-[hsl(var(--foreground))]">Offline resilience</strong> — Queue changes and replay on reconnect</span>
+                    </li>
+                </ul>
+                <a href="#" class="inline-flex items-center gap-2 text-sm font-medium text-[hsl(252,87%,68%)] hover:text-[hsl(252,87%,78%)] transition-colors">
+                    Learn more about our architecture
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Architecture visualization -->
+            <div class="relative">
+                <div class="absolute -inset-4 bg-gradient-to-br from-[hsl(252,87%,68%)]/10 to-transparent rounded-3xl blur-2xl"></div>
+                <div class="relative glass rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2 text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Live Connection
+                        </div>
+                        <div class="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))]">
+                            <span>WebSocket</span>
+                            <span class="font-mono text-[hsl(252,87%,68%)]">wss://</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center gap-8 py-8">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-12 h-12 rounded-xl bg-[hsl(252,87%,68%)]/20 flex items-center justify-center text-[hsl(252,87%,68%)]">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-[hsl(var(--muted-foreground))]">Alice</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[hsl(var(--muted-foreground))]">
+                                <polyline points="15 3 21 3 21 9"/>
+                                <polyline points="9 21 3 21 3 15"/>
+                                <line x1="21" y1="3" x2="14" y2="10"/>
+                            </svg>
+                            <span class="text-[10px] font-mono text-[hsl(252,87%,68%)]">STOMP</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-12 h-12 rounded-xl bg-[hsl(190,87%,68%)]/20 flex items-center justify-center text-[hsl(190,87%,68%)]">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-[hsl(var(--muted-foreground))]">Bob</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-[hsl(var(--muted-foreground))]">
+                                <polyline points="15 3 21 3 21 9"/>
+                                <polyline points="9 21 3 21 3 15"/>
+                                <line x1="21" y1="3" x2="14" y2="10"/>
+                            </svg>
+                            <span class="text-[10px] font-mono text-[hsl(190,87%,68%)]">STOMP</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-12 h-12 rounded-xl bg-[hsl(330,87%,68%)]/20 flex items-center justify-center text-[hsl(330,87%,68%)]">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs text-[hsl(var(--muted-foreground))]">Charlie</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[hsl(var(--background))] rounded-xl p-4">
+                        <div class="flex items-center justify-between text-xs mb-2">
+                            <span class="font-medium text-[hsl(var(--muted-foreground))]">Message Log</span>
+                            <span class="text-[hsl(var(--muted-foreground))]">STOMP frames</span>
+                        </div>
+                        <div class="space-y-1.5 font-mono text-xs">
+                            <div class="flex items-center gap-2 text-green-500">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                <span class="text-[hsl(var(--muted-foreground))]">CONNECTED</span>
+                                <span>/topic/board/product-launch</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-[hsl(252,87%,68%)]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[hsl(252,87%,68%)]"></span>
+                                <span class="text-[hsl(var(--muted-foreground))]">MESSAGE</span>
+                                <span>card.moved { "id": "42", "to": "in-progress" }</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-[hsl(190,87%,68%)]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[hsl(190,87%,68%)]"></span>
+                                <span class="text-[hsl(var(--muted-foreground))]">MESSAGE</span>
+                                <span>comment.added { "by": "bob", "text": "LGTM!" }</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== STATS BANNER ========== -->
+<section class="py-16 border-y border-[hsl(var(--border))]/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+                <div class="text-3xl md:text-4xl font-bold gradient-text">99.9%</div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">Uptime SLA</p>
+            </div>
+            <div>
+                <div class="text-3xl md:text-4xl font-bold gradient-text">&lt;50ms</div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">Sync latency</p>
+            </div>
+            <div>
+                <div class="text-3xl md:text-4xl font-bold gradient-text">2.4K+</div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">Teams onboarded</p>
+            </div>
+            <div>
+                <div class="text-3xl md:text-4xl font-bold gradient-text">50+</div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">Integrations</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== PRICING ========== -->
+<section id="pricing" class="py-24 relative">
+    <div class="absolute inset-0 bg-radial-gradient opacity-30 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                Simple pricing
+            </div>
+            <h2 class="text-3xl md:text-5xl font-bold">No surprises, <span class="gradient-text">just results</span></h2>
+            <p class="text-lg text-[hsl(var(--muted-foreground))]">
+                Start free, upgrade when you grow. All plans include real-time sync.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <!-- Free -->
+            <div class="glass rounded-2xl p-8 pricing-card">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold">Free</h3>
+                        <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">For personal projects</p>
+                    </div>
+                    <div>
+                        <span class="text-4xl font-bold">$0</span>
+                        <span class="text-sm text-[hsl(var(--muted-foreground))]">/month</span>
+                    </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Up to 5 team members
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            3 boards
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Real-time sync
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            7-day activity history
+                        </li>
+                        <li class="flex items-center gap-3 text-sm text-[hsl(var(--muted-foreground))]">
+                            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            Priority support
+                        </li>
+                    </ul>
+                    <a href="/sign-up" class="btn-ghost w-full justify-center">Get Started</a>
+                </div>
+            </div>
+
+            <!-- Pro (Featured) -->
+            <div class="glass rounded-2xl p-8 pricing-card featured relative">
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span class="bg-gradient-to-r from-[hsl(252,87%,68%)] to-[hsl(190,87%,68%)] text-white text-xs font-semibold px-4 py-1 rounded-full">Most Popular</span>
+                </div>
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold">Pro</h3>
+                        <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">For growing teams</p>
+                    </div>
+                    <div>
+                        <span class="text-4xl font-bold">$19</span>
+                        <span class="text-sm text-[hsl(var(--muted-foreground))]">/month</span>
+                    </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Unlimited team members
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Unlimited boards
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Real-time sync
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            90-day activity history
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Priority support
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            API & webhook access
+                        </li>
+                    </ul>
+                    <a href="/sign-up" class="btn-primary w-full justify-center">Start Free Trial</a>
+                </div>
+            </div>
+
+            <!-- Enterprise -->
+            <div class="glass rounded-2xl p-8 pricing-card">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold">Enterprise</h3>
+                        <p class="text-sm text-[hsl(var(--muted-foreground))] mt-1">For organizations</p>
+                    </div>
+                    <div>
+                        <span class="text-4xl font-bold">$49</span>
+                        <span class="text-sm text-[hsl(var(--muted-foreground))]">/month</span>
+                    </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Everything in Pro
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            SSO / SAML
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Dedicated support
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Custom integrations
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Audit logs
+                        </li>
+                        <li class="flex items-center gap-3 text-sm">
+                            <svg class="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            99.99% SLA
+                        </li>
+                    </ul>
+                    <a href="/#contact" class="btn-ghost w-full justify-center">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== TESTIMONIALS ========== -->
+<section id="testimonials" class="py-24 border-t border-[hsl(var(--border))]/50 overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
+        <div class="text-center max-w-3xl mx-auto space-y-4">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                Loved by teams
+            </div>
+            <h2 class="text-3xl md:text-5xl font-bold">What our <span class="gradient-text">customers</span> say</h2>
+        </div>
+    </div>
+
+    <div class="relative">
+        <div class="flex gap-6 testimonial-card" style="width: max-content;">
+            <div class="glass rounded-2xl p-6 w-80 flex-shrink-0">
+                <div class="flex items-center gap-1 mb-4">
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+                    "We ditched three separate tools after adopting FlowBoard. Having tasks and real-time chat in one place transformed our sprint cycles."
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-sm font-bold">SK</div>
+                    <div>
+                        <div class="text-sm font-medium">Sarah Kim</div>
+                        <div class="text-xs text-[hsl(var(--muted-foreground))]">Engineering Lead, Pulse</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 w-80 flex-shrink-0">
+                <div class="flex items-center gap-1 mb-4">
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+                    "The WebSocket sync is incredible. I watched a designer update a card on the other side of the world, and it appeared on my screen instantly."
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-sm font-bold">MR</div>
+                    <div>
+                        <div class="text-sm font-medium">Marcus Reed</div>
+                        <div class="text-xs text-[hsl(var(--muted-foreground))]">CTO, Nova Systems</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 w-80 flex-shrink-0">
+                <div class="flex items-center gap-1 mb-4">
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+                    "Activity history saved us during our SOC 2 audit. Being able to replay exactly who changed what and when was invaluable."
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-sm font-bold">AL</div>
+                    <div>
+                        <div class="text-sm font-medium">Aiko Tanaka</div>
+                        <div class="text-xs text-[hsl(var(--muted-foreground))]">Ops Director, Edge</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 w-80 flex-shrink-0">
+                <div class="flex items-center gap-1 mb-4">
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+                    "We evaluated 6 project management tools. FlowBoard was the only one that felt like it was built for real-time-first workflows."
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center text-sm font-bold">CJ</div>
+                    <div>
+                        <div class="text-sm font-medium">Chris Jiang</div>
+                        <div class="text-xs text-[hsl(var(--muted-foreground))]">PM, Core Labs</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-6 w-80 flex-shrink-0">
+                <div class="flex items-center gap-1 mb-4">
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+                    "We ditched three separate tools after adopting FlowBoard. Having tasks and real-time chat in one place transformed our sprint cycles."
+                </p>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-sm font-bold">SK</div>
+                    <div>
+                        <div class="text-sm font-medium">Sarah Kim</div>
+                        <div class="text-xs text-[hsl(var(--muted-foreground))]">Engineering Lead, Pulse</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ========== CTA / WAITLIST ========== -->
+<section id="cta" class="py-24 relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-[hsl(252,87%,68%)]/10 via-transparent to-[hsl(190,87%,68%)]/10 pointer-events-none"></div>
+    <div class="absolute inset-0 bg-grid opacity-20 pointer-events-none"></div>
+
+    <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+            <span class="w-2 h-2 rounded-full bg-[hsl(252,87%,68%)] animate-pulse"></span>
+            Free 14-day trial, no credit card
+        </div>
+        <h2 class="text-3xl md:text-5xl font-bold leading-tight">
+            Ready to ship<br />
+            <span class="gradient-text">faster together?</span>
+        </h2>
+        <p class="text-lg text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto">
+            Join thousands of teams already using FlowBoard to collaborate in real time.
+        </p>
+
+        <!-- Flash messages -->
+        <div id="waitlist-success" class="hidden mx-auto max-w-md p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-sm"></div>
+        <div id="waitlist-error" class="hidden mx-auto max-w-md p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm"></div>
+
+        <!-- Waitlist form -->
+        <form id="waitlist-form" class="max-w-md mx-auto space-y-4">
+            <input type="email" id="waitlist-email" name="email" placeholder="Enter your email"
+                   class="w-full px-4 py-3 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(252,87%,68%)]/50 focus:border-transparent transition-all" required />
+            <input type="text" id="waitlist-name" name="fullName" placeholder="Full name (optional)"
+                   class="w-full px-4 py-3 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(252,87%,68%)]/50 focus:border-transparent transition-all" />
+            <input type="text" id="waitlist-company" name="company" placeholder="Company (optional)"
+                   class="w-full px-4 py-3 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(252,87%,68%)]/50 focus:border-transparent transition-all" />
+            <button type="submit" class="btn-primary w-full justify-center text-base px-10 py-4">
+                Join the Waitlist
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+            </button>
+        </form>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <a href="/sign-up" class="btn-primary text-base px-10 py-4">
+                Start Free Trial
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+            </a>
+            <a href="#contact" class="btn-ghost text-base px-10 py-4">
+                Talk to Sales
+            </a>
+        </div>
+        <p class="text-xs text-[hsl(var(--muted-foreground))]">
+            No credit card required. Cancel anytime.
+        </p>
+    </div>
+</section>
+
+<!-- ========== CONTACT ========== -->
+<section id="contact" class="py-24 border-t border-[hsl(var(--border))]/50">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+        <div class="space-y-4">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                Get in touch
+            </div>
+            <h2 class="text-3xl md:text-5xl font-bold">Have a <span class="gradient-text">question?</span></h2>
+            <p class="text-lg text-[hsl(var(--muted-foreground))]">
+                We'd love to hear from you. Send us a message and we'll respond promptly.
+            </p>
+        </div>
+
+        <div id="contact-success" class="hidden mx-auto max-w-md p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-sm"></div>
+        <div id="contact-error" class="hidden mx-auto max-w-md p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm"></div>
+
+        <form id="contact-form" class="max-w-lg mx-auto space-y-4 text-left">
+            <div class="grid sm:grid-cols-2 gap-4">
+                <input type="text" id="contact-name" name="name" placeholder="Your name"
+                       class="w-full px-4 py-3 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(252,87%,68%)]/50 focus:border-transparent transition-all" required />
+                <input type="email" id="contact-email" name="email" placeholder="Your email"
+                       class="w-full px-4 py-3 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(252,87%,68%)]/50 focus:border-transparent transition-all" required />
+            </div>
+            <textarea id="contact-message" name="message" placeholder="Your message" rows="5"
+                      class="w-full px-4 py-3 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(252,87%,68%)]/50 focus:border-transparent transition-all resize-none" required></textarea>
+            <button type="submit" class="btn-primary w-full justify-center text-base px-10 py-4">
+                Send Message
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="border-t border-[hsl(var(--border))]/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
+            <div class="col-span-2 lg:col-span-1">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(252,87%,68%)] to-[hsl(190,87%,68%)] flex items-center justify-center text-sm font-bold">
+                        F
+                    </div>
+                    <span class="text-lg font-semibold">FlowBoard</span>
+                </div>
+                <p class="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">
+                    Real-time collaborative task management for modern teams.
+                </p>
+                <div class="flex items-center gap-3">
+                    <a href="#" class="w-8 h-8 rounded-lg bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 4.01c-1 .49-1.98.689-3 .99-1.121-1.265-2.783-1.335-4.379-.737s-2.621 2.046-2.621 3.737v1.01c-3.245.083-6.135-1.178-8-4 0 0-5 11 5 16-1.947 1.227-4.087 1.934-6 2 5.391 2.989 11.815 1.402 14.5-2.449 1.699-2.283 2.513-5.119 2.5-8.023 0-.16 0-.32-.01-.48.54-.45 1.01-.96 1.4-1.51"/></svg>
+                    </a>
+                    <a href="#" class="w-8 h-8 rounded-lg bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9.62.12 1.07-.26 1.07-.58 0-.29-.01-1.24-.02-2.41-3.44.75-4.16-1.66-4.16-1.66-.56-1.42-1.37-1.8-1.37-1.8-1.12-.77.08-.75.08-.75 1.24.09 1.89 1.28 1.89 1.28 1.1 1.89 2.9 1.34 3.6 1.03.11-.8.43-1.34.78-1.65-2.75-.31-5.64-1.38-5.64-6.14 0-1.36.48-2.47 1.27-3.34-.13-.31-.55-1.57.12-3.27 0 0 1.04-.33 3.4 1.27.99-.27 2.05-.41 3.1-.41s2.11.14 3.1.41c2.36-1.6 3.4-1.27 3.4-1.27.67 1.7.25 2.96.12 3.27.79.87 1.27 1.98 1.27 3.34 0 4.77-2.9 5.82-5.65 6.13.44.38.84.94.84 1.89 0 1.37-.01 2.47-.01 2.8 0 .33.44.71 1.07.59 4.78-.76 8.44-4.9 8.44-9.91 0-5.53-4.5-10.02-10-10.02z"/></svg>
+                    </a>
+                    <a href="#" class="w-8 h-8 rounded-lg bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-semibold mb-4">Product</h4>
+                <ul class="space-y-2.5">
+                    <li><a href="/#features" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Features</a></li>
+                    <li><a href="/#pricing" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Pricing</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Integrations</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Changelog</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Roadmap</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-semibold mb-4">Resources</h4>
+                <ul class="space-y-2.5">
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Documentation</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">API Reference</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Guides</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Status</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Support</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-semibold mb-4">Company</h4>
+                <ul class="space-y-2.5">
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">About</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Blog</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Careers</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Contact</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Press Kit</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-semibold mb-4">Legal</h4>
+                <ul class="space-y-2.5">
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Privacy</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Terms</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Security</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">Cookies</a></li>
+                    <li><a href="#" class="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">DPA</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="border-t border-[hsl(var(--border))]/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p class="text-xs text-[hsl(var(--muted-foreground))]">
+                &copy; 2026 FlowBoard. All rights reserved.
+            </p>
+            <div class="flex items-center gap-4 text-xs text-[hsl(var(--muted-foreground))]">
+                <a href="#" class="hover:text-[hsl(var(--foreground))] transition-colors">Privacy Policy</a>
+                <a href="#" class="hover:text-[hsl(var(--foreground))] transition-colors">Terms of Service</a>
+                <a href="#" class="hover:text-[hsl(var(--foreground))] transition-colors">Cookie Policy</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Mobile menu toggle
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+
+    // Scroll-triggered reveal
+    const revealElements = document.querySelectorAll('.scroll-reveal');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    revealElements.forEach(el => observer.observe(el));
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Close mobile menu if open
+                if (!mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                }
+            }
+        });
+    });
+
+    // Highlight active nav link on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('nav a[href^="#"]');
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const top = section.offsetTop - 100;
+            if (window.scrollY >= top) {
+                current = section.getAttribute('id');
+            }
+        });
+        navLinks.forEach(link => {
+            link.classList.remove('text-[hsl(var(--foreground))]');
+            link.classList.add('text-[hsl(var(--muted-foreground))]');
+            if (link.getAttribute('href') === '#' + current) {
+                link.classList.remove('text-[hsl(var(--muted-foreground))]');
+                link.classList.add('text-[hsl(var(--foreground))]');
+            }
+        });
+    });
+
+    // ===== API CALLS =====
+
+    // Waitlist form submission
+    document.getElementById('waitlist-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const successEl = document.getElementById('waitlist-success');
+        const errorEl = document.getElementById('waitlist-error');
+        successEl.classList.add('hidden');
+        errorEl.classList.add('hidden');
+
+        const payload = {
+            email: document.getElementById('waitlist-email').value,
+            fullName: document.getElementById('waitlist-name').value,
+            company: document.getElementById('waitlist-company').value
+        };
+
+        try {
+            const res = await fetch('/api/landing/waitlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                successEl.textContent = data.message || "You're on the list! We'll be in touch.";
+                successEl.classList.remove('hidden');
+                document.getElementById('waitlist-form').reset();
+            } else {
+                errorEl.textContent = data.message || data.error || 'Something went wrong.';
+                errorEl.classList.remove('hidden');
+            }
+        } catch {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.classList.remove('hidden');
+        }
+    });
+
+    // Contact form submission
+    document.getElementById('contact-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const successEl = document.getElementById('contact-success');
+        const errorEl = document.getElementById('contact-error');
+        successEl.classList.add('hidden');
+        errorEl.classList.add('hidden');
+
+        const payload = {
+            name: document.getElementById('contact-name').value,
+            email: document.getElementById('contact-email').value,
+            message: document.getElementById('contact-message').value
+        };
+
+        try {
+            const res = await fetch('/api/landing/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                successEl.textContent = data.message || "Thanks for reaching out! We'll get back to you soon.";
+                successEl.classList.remove('hidden');
+                document.getElementById('contact-form').reset();
+            } else {
+                errorEl.textContent = data.message || data.error || 'Something went wrong.';
+                errorEl.classList.remove('hidden');
+            }
+        } catch {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.classList.remove('hidden');
+        }
+    });
+</script>
+</body>
+</html>
