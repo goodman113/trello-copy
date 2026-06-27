@@ -14,14 +14,13 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 import javax.sql.DataSource;
 
-import static org.springframework.security.authorization.AuthenticatedAuthorizationManager.rememberMe;
+// ...existing imports...
+import org.springframework.core.annotation.Order;
 
 @Configuration
 @EnableWebSecurity
@@ -45,11 +44,26 @@ public class SecurityConfig {
         return new JdbcTemplate(dataSource);
     }
     @Bean
+    @Order(1)
     public SecurityFilterChain securityFilterChain(HttpSecurity http,@Qualifier("getUserDetailsService") UserDetailsService userDetailsService) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**","/dashboard/**","/sign-up").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/dashboard/**",
+                                "/login",
+                                "/sign-up",
+                                "/presence/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs.yaml",
+                                "/swagger-ui/index.html",
+                                "/webjars/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(auth -> auth

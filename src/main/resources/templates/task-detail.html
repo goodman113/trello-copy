@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<html lang="en" th:attr="data-board-id=${boardId},data-workspace-id=${workspaceId}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Detail — CollabHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg: #0b0d12;
+      --sidebar: #0e1017;
+      --sidebar-hover: #181b26;
+      --surface: #12151c;
+      --surface-hover: #1a1d2a;
+      --surface-elevated: #181b26;
+      --border: #1e2231;
+      --border-light: #282d3e;
+      --text: #e2e7f0;
+      --text-secondary: #83899c;
+      --text-muted: #555a6e;
+      --accent: #6366f1;
+      --accent-hover: #5558e6;
+      --accent-dim: rgba(99,102,241,.12);
+      --error: #f87171;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --orange: #fb923c;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ─── Top Bar ─── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+      z-index: 100;
+      min-height: 52px;
+    }
+
+    .topbar-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background .15s, color .15s;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      font-family: inherit;
+    }
+    .topbar-back:hover { background: var(--surface-hover); color: var(--text); }
+    .topbar-back svg { width: 16px; height: 16px; }
+
+    .topbar-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .topbar-title span { color: var(--text-muted); }
+    .topbar-title strong { color: var(--text); font-weight: 600; }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .topbar-presence {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-right: 8px;
+    }
+    .topbar-presence .presence-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      object-fit: cover;
+      margin-left: -6px;
+      transition: transform .15s;
+      cursor: pointer;
+    }
+    .topbar-presence .presence-avatar:first-child { margin-left: 0; }
+    .topbar-presence .presence-avatar:hover { transform: translateY(-2px); z-index: 2; position: relative; }
+    .topbar-presence .presence-more {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--surface-hover);
+      border: 2px solid var(--bg);
+      margin-left: -6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .btn-icon:hover { background: var(--surface-hover); color: var(--text); }
+    .btn-icon svg { width: 18px; height: 18px; }
+    .btn-icon:disabled { opacity: .35; cursor: not-allowed; }
+    .btn-icon:disabled:hover { background: transparent; color: var(--text-secondary); }
+
+    .btn-primary {
+      padding: 7px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 7px 16px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-light); color: var(--text); }
+
+    .btn-danger {
+      padding: 7px 16px;
+      background: rgba(248,113,113,.12);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--error);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-danger:hover { background: rgba(248,113,113,.2); }
+    .btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+
+    .ws-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      transition: background .3s;
+    }
+    .ws-status.connected { color: var(--success); background: rgba(52,211,153,.1); }
+    .ws-status.connecting { color: var(--warning); background: rgba(251,191,36,.1); }
+    .ws-status.disconnected { color: var(--error); background: rgba(248,113,113,.1); }
+    .ws-status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ws-status.connected .dot { background: var(--success); }
+    .ws-status.connecting .dot { background: var(--warning); animation: pulse-dot 1.5s infinite; }
+    .ws-status.disconnected .dot { background: var(--error); }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: .5; }
+      50% { transform: scale(1.4); opacity: 1; }
+    }
+
+    /* ─── Main Layout ─── */
+    .main-layout {
+      display: flex;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+
+    /* ─── Left Panel (Main Content) ─── */
+    .main-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+      min-width: 0;
+    }
+
+    .main-panel-content {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 32px 80px;
+    }
+
+    /* ─── Editable Title ─── */
+    .task-title-section {
+      margin-bottom: 24px;
+    }
+    .task-title-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text);
+      font-size: 24px;
+      font-weight: 650;
+      font-family: inherit;
+      outline: none;
+      padding: 4px 0;
+      transition: border-color .2s;
+      line-height: 1.3;
+    }
+    .task-title-input:focus { border-bottom-color: var(--accent); }
+    .task-title-input:hover { border-bottom-color: var(--border-light); }
+    .task-title-input:placeholder-shown { color: var(--text-muted); }
+
+    .task-title-saving {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .task-title-saving.visible { opacity: 1; }
+
+    /* ─── Description Editor ─── */
+    .desc-section {
+      margin-bottom: 32px;
+    }
+    .desc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .desc-header label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-secondary);
+    }
+    .desc-toolbar {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+    .desc-toolbar button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background .15s, color .15s;
+      font-family: inherit;
+    }
+    .desc-toolbar button:hover { background: var(--surface-hover); color: var(--text); }
+    .desc-toolbar button.active { background: var(--accent-dim); color: var(--accent); }
+    .desc-toolbar .sep {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+    .desc-editor {
+      min-height: 120px;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.7;
+      outline: none;
+      transition: border-color .2s;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      cursor: text;
+    }
+    .desc-editor:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.08); }
+    .desc-editor:empty::before {
+      content: attr(data-placeholder);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .desc-editor h1, .desc-editor h2, .desc-editor h3 { margin: 8px 0 4px; }
+    .desc-editor h1 { font-size: 20px; }
+    .desc-editor h2 { font-size: 17px; }
+    .desc-editor h3 { font-size: 15px; }
+    .desc-editor ul, .desc-editor ol { padding-left: 20px; margin: 4px 0; }
+    .desc-editor blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 12px;
+      color: var(--text-secondary);
+      margin: 4px 0;
+    }
+    .desc-editor code {
+      background: var(--surface-hover);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    /* ─── Section Headers ─── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 0 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .section-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-secondary);
+    }
+    .section-header .count {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--surface-hover);
+      padding: 0 7px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .section-header svg {
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* ─── Comments ─── */
+    .comments-section { margin-bottom: 8px; }
+
+    .comment-input-area {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .comment-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface-hover);
+    }
+    .comment-input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    .comment-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      min-height: 40px;
+      max-height: 160px;
+      line-height: 1.5;
+      transition: border-color .2s;
+    }
+    .comment-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.08); }
+    .comment-input-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+    .comment-input-actions .typing-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .comment-post-btn {
+      padding: 6px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .comment-post-btn:hover { background: var(--accent-hover); }
+    .comment-post-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .comment-item {
+      display: flex;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      animation: fade-in .25s ease;
+    }
+    .comment-item:last-child { border-bottom: none; }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .comment-author {
+      font-size: 13px;
+      font-weight: 550;
+      color: var(--text);
+    }
+    .comment-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .comment-edited {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .comment-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .comment-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .comment-item:hover .comment-actions { opacity: 1; }
+    .comment-actions button {
+      background: none;
+      border: none;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color .15s, background .15s;
+      font-family: inherit;
+    }
+    .comment-actions button:hover { color: var(--text); background: var(--surface-hover); }
+    .comment-actions .edit-btn:hover { color: var(--accent); }
+    .comment-actions .delete-btn:hover { color: var(--error); }
+
+    .comment-edit-input {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--bg);
+      border: 1.5px solid var(--accent);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      min-height: 60px;
+    }
+    .comment-edit-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .comment-edit-actions button {
+      padding: 4px 12px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .comment-edit-actions .save { background: var(--accent); color: #fff; }
+    .comment-edit-actions .save:hover { background: var(--accent-hover); }
+    .comment-edit-actions .cancel { background: transparent; color: var(--text-muted); }
+    .comment-edit-actions .cancel:hover { color: var(--text); }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Activity ─── */
+    .activity-section { margin-bottom: 8px; }
+
+    .activity-item {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+    }
+    .activity-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--surface-hover);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+    .activity-icon svg { width: 14px; height: 14px; }
+    .activity-body { flex: 1; min-width: 0; }
+    .activity-text {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+    .activity-text strong { color: var(--text); font-weight: 550; }
+    .activity-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── Attachments ─── */
+    .attachments-section { margin-bottom: 8px; }
+
+    .attachment-dropzone {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      margin-bottom: 16px;
+    }
+    .attachment-dropzone:hover,
+    .attachment-dropzone.dragover { border-color: var(--accent); background: var(--accent-dim); }
+    .attachment-dropzone svg {
+      width: 28px;
+      height: 28px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .attachment-dropzone p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .attachment-dropzone p.sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .attachment-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      transition: border-color .15s;
+    }
+    .attachment-item:hover { border-color: var(--border-light); }
+    .attachment-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-hover);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .attachment-icon svg { width: 18px; height: 18px; }
+    .attachment-info { flex: 1; min-width: 0; }
+    .attachment-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .attachment-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .attachment-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color .15s;
+    }
+    .attachment-delete:hover { color: var(--error); }
+    .attachment-delete svg { width: 16px; height: 16px; }
+
+    /* ─── Typing Indicator ─── */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 4px 0 8px 42px;
+      min-height: 0;
+      transition: opacity .3s, min-height .3s;
+      opacity: 0;
+    }
+    .typing-indicator.visible { opacity: 1; min-height: 24px; }
+    .typing-indicator .typing-avatars {
+      display: flex;
+      align-items: center;
+    }
+    .typing-indicator .typing-avatars img {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--bg);
+      margin-left: -4px;
+      object-fit: cover;
+    }
+    .typing-indicator .typing-avatars img:first-child { margin-left: 0; }
+    .typing-dots { display: inline-flex; gap: 2px; margin-left: 4px; }
+    .typing-dots span {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: typing-bounce 1.4s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-4px); }
+    }
+
+    /* ─── Sidebar (Right Panel) ─── */
+    .sidebar-panel {
+      width: 320px;
+      min-width: 320px;
+      background: var(--sidebar);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .sidebar-group {
+      margin-bottom: 20px;
+    }
+    .sidebar-group-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .sidebar-field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-field:last-child { border-bottom: none; }
+    .sidebar-field-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sidebar-field-label svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .sidebar-field-value {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      text-align: right;
+    }
+
+    .sidebar-field-value select,
+    .sidebar-field-value input[type="date"] {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      padding: 4px 8px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color .2s;
+      max-width: 140px;
+    }
+    .sidebar-field-value select:focus,
+    .sidebar-field-value input[type="date"]:focus { border-color: var(--accent); }
+    .sidebar-field-value select { appearance: none; }
+
+    .priority-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .priority-badge.urgent { background: rgba(248,113,113,.15); color: var(--error); }
+    .priority-badge.high { background: rgba(248,113,113,.12); color: var(--error); }
+    .priority-badge.medium { background: rgba(251,191,36,.12); color: var(--warning); }
+    .priority-badge.low { background: rgba(52,211,153,.12); color: var(--success); }
+    .priority-badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .priority-badge.urgent .dot { background: var(--error); }
+    .priority-badge.high .dot { background: var(--error); }
+    .priority-badge.medium .dot { background: var(--warning); }
+    .priority-badge.low .dot { background: var(--success); }
+
+    .status-select {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-select.todo { color: var(--text-muted); }
+    .status-select.in_progress { color: var(--warning); }
+    .status-select.done { color: var(--success); }
+
+    .assignee-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background .15s;
+    }
+    .assignee-selector:hover { background: var(--surface-hover); }
+    .assignee-selector img {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .assignee-selector .name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .assignee-selector .placeholder {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .assignee-dropdown {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      width: 200px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      z-index: 50;
+      max-height: 240px;
+      overflow-y: auto;
+      display: none;
+    }
+    .assignee-dropdown.open { display: block; }
+    .assignee-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background .15s;
+      font-size: 13px;
+    }
+    .assignee-dropdown-item:hover { background: var(--surface-hover); }
+    .assignee-dropdown-item img {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .assignee-dropdown-item .check {
+      margin-left: auto;
+      color: var(--accent);
+    }
+
+    .sidebar-field-value .date-display {
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background .15s;
+    }
+    .sidebar-field-value .date-display:hover { background: var(--surface-hover); }
+    .sidebar-field-value .date-display.overdue { color: var(--error); }
+
+    .task-meta-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .task-meta-info strong { color: var(--text); font-weight: 500; }
+
+    /* ─── Tags ─── */
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--surface-hover);
+      color: var(--text-secondary);
+      cursor: default;
+    }
+    .tag-remove {
+      cursor: pointer;
+      opacity: .5;
+      transition: opacity .15s;
+      background: none;
+      border: none;
+      color: inherit;
+      font-size: 12px;
+      padding: 0;
+      line-height: 1;
+    }
+    .tag-remove:hover { opacity: 1; }
+    .tag-add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      padding: 1px 8px;
+      font-family: inherit;
+      transition: color .15s, border-color .15s;
+    }
+    .tag-add-btn:hover { color: var(--text); border-color: var(--border-light); }
+    .tag-input-popup {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      z-index: 50;
+    }
+    .tag-input-popup.open { display: block; }
+    .tag-input-popup input {
+      width: 140px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+    }
+    .tag-input-popup input:focus { border-color: var(--accent); }
+
+    /* ─── Toast ─── */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+    }
+    .toast {
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 450;
+      animation: toast-in .3s ease;
+      max-width: 360px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.success { background: rgba(52,211,153,.15); color: var(--success); border: 1px solid rgba(52,211,153,.2); }
+    .toast.error { background: rgba(248,113,113,.15); color: var(--error); border: 1px solid rgba(248,113,113,.2); }
+    .toast.info { background: rgba(99,102,241,.15); color: var(--accent); border: 1px solid rgba(99,102,241,.2); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Loading / Empty / Error States ─── */
+    .loading-skeleton { padding: 20px 0; }
+    .skeleton-line {
+      height: 14px;
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .skeleton-line.w-60 { width: 60%; }
+    .skeleton-line.w-40 { width: 40%; }
+    .skeleton-line.w-80 { width: 80%; }
+    .skeleton-line.h-24 { height: 24px; }
+    .skeleton-line.h-80 { height: 80px; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 12px;
+      color: var(--text-muted);
+    }
+    .empty-state svg { width: 32px; height: 32px; margin-bottom: 6px; opacity: .3; }
+    .empty-state p { font-size: 12px; }
+
+    /* ─── Confirm Dialog ─── */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 400;
+    }
+    .confirm-overlay.open { display: flex; }
+    .confirm-dialog {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      animation: modal-in .2s ease;
+    }
+    .confirm-dialog h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .confirm-dialog p { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
+    .confirm-dialog .actions { display: flex; gap: 8px; justify-content: center; }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      .sidebar-panel { display: none; }
+      .main-panel-content { padding: 20px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Top Bar ─── -->
+<header class="topbar">
+  <button class="topbar-back" id="back-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back
+  </button>
+  <div class="topbar-title">
+    <span id="breadcrumb">Task</span>
+  </div>
+
+  <div class="topbar-actions">
+    <div class="topbar-presence" id="presence-avatars"></div>
+    <button class="btn-icon" id="delete-task-btn" title="Delete task">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    </button>
+    <div class="ws-status disconnected" id="ws-status">
+      <span class="dot"></span>
+      <span class="label">Disconnected</span>
+    </div>
+  </div>
+</header>
+
+<!-- ─── Main Layout ─── -->
+<div class="main-layout">
+
+  <!-- ─── Left: Main Content ─── -->
+  <div class="main-panel" id="main-panel">
+    <div class="main-panel-content" id="main-content">
+
+      <!-- Loading -->
+      <div class="loading-skeleton" id="loading-skeleton">
+        <div class="skeleton-line w-80 h-24"></div>
+        <div class="skeleton-line w-60" style="margin-top:24px"></div>
+        <div class="skeleton-line w-40"></div>
+        <div class="skeleton-line h-80" style="margin-top:16px"></div>
+        <div class="skeleton-line w-60" style="margin-top:32px"></div>
+        <div class="skeleton-line h-80"></div>
+      </div>
+
+      <!-- Task Content (hidden until loaded) -->
+      <div id="task-content" style="display:none">
+
+        <!-- Title -->
+        <div class="task-title-section">
+          <input
+            type="text"
+            class="task-title-input"
+            id="task-title-input"
+            placeholder="Task title"
+            spellcheck="true"
+          />
+          <div class="task-title-saving" id="title-saving-indicator">Saving...</div>
+        </div>
+
+        <!-- Description -->
+        <div class="desc-section">
+          <div class="desc-header">
+            <label>Description</label>
+            <div class="desc-toolbar">
+              <button data-cmd="bold" title="Bold"><strong>B</strong></button>
+              <button data-cmd="italic" title="Italic"><em>I</em></button>
+              <button data-cmd="underline" title="Underline"><u>U</u></button>
+              <span class="sep"></span>
+              <button data-cmd="insertUnorderedList" title="List">≡</button>
+              <button data-cmd="insertOrderedList" title="Ordered list">#</button>
+              <span class="sep"></span>
+              <button data-cmd="code" title="Code">&lt;/&gt;</button>
+            </div>
+          </div>
+          <div
+            class="desc-editor"
+            id="desc-editor"
+            contenteditable="true"
+            data-placeholder="Add a description..."
+          ></div>
+        </div>
+
+        <!-- Attachments -->
+        <div class="attachments-section">
+          <div class="section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            <h3>Attachments</h3>
+            <span class="count" id="attachment-count">0</span>
+          </div>
+
+          <div class="attachment-dropzone" id="attachment-dropzone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p>Drop files here or click to upload</p>
+            <p class="sub">Any file up to 25 MB</p>
+            <input type="file" id="file-input" multiple style="display:none" />
+          </div>
+          <div id="attachment-list"></div>
+        </div>
+
+        <!-- Comments -->
+        <div class="comments-section">
+          <div class="section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <h3>Comments</h3>
+            <span class="count" id="comment-count">0</span>
+          </div>
+
+          <div class="comment-input-area">
+            <img class="comment-avatar" id="current-user-avatar" src="" alt="" />
+            <div class="comment-input-wrapper">
+              <textarea
+                class="comment-input"
+                id="comment-input"
+                rows="1"
+                placeholder="Write a comment..."
+              ></textarea>
+              <div class="comment-input-actions">
+                <div class="typing-hint" id="typing-hint"></div>
+                <button class="comment-post-btn" id="comment-post-btn" disabled>Comment</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="typing-indicator" id="typing-indicator">
+            <div class="typing-avatars" id="typing-avatars"></div>
+            <span id="typing-text"></span>
+            <div class="typing-dots"><span></span><span></span><span></span></div>
+          </div>
+
+          <div id="comment-list"></div>
+        </div>
+
+        <!-- Activity -->
+        <div class="activity-section">
+          <div class="section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <h3>Activity History</h3>
+          </div>
+          <div id="activity-list"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Right: Sidebar ─── -->
+  <aside class="sidebar-panel" id="sidebar-panel">
+
+    <!-- Assignee -->
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Assignment</div>
+      <div class="sidebar-field">
+        <span class="sidebar-field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Assignee
+        </span>
+        <div class="sidebar-field-value" style="position:relative">
+          <div class="assignee-selector" id="assignee-selector">
+            <img id="assignee-avatar" src="" alt="" style="display:none" />
+            <span class="name" id="assignee-name">Unassigned</span>
+          </div>
+          <div class="assignee-dropdown" id="assignee-dropdown"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-field">
+        <span class="sidebar-field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Due Date
+        </span>
+        <div class="sidebar-field-value">
+          <input type="date" id="due-date-input" />
+        </div>
+      </div>
+
+      <div class="sidebar-field">
+        <span class="sidebar-field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Priority
+        </span>
+        <div class="sidebar-field-value">
+          <select id="priority-select">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sidebar-field">
+        <span class="sidebar-field-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Status
+        </span>
+        <div class="sidebar-field-value">
+          <select class="status-select" id="status-select">
+            <option value="TODO">To Do</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="DONE">Done</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tags -->
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Tags</div>
+      <div class="sidebar-field">
+        <div class="tags-container" id="tags-container" style="position:relative;width:100%">
+          <button class="tag-add-btn" id="tag-add-btn">+ Add tag</button>
+          <div class="tag-input-popup" id="tag-input-popup">
+            <input type="text" id="tag-input" placeholder="Tag name..." maxlength="20" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata -->
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Details</div>
+      <div class="task-meta-info">
+        <div style="padding:4px 0"><strong>Created by</strong> <span id="meta-created-by">—</span></div>
+        <div style="padding:4px 0"><strong>Created at</strong> <span id="meta-created-at">—</span></div>
+        <div style="padding:4px 0"><strong>Updated at</strong> <span id="meta-updated-at">—</span></div>
+        <div style="padding:4px 0"><strong>Board</strong> <span id="meta-board">—</span></div>
+        <div style="padding:4px 0"><strong>Column</strong> <span id="meta-column">—</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ─── Confirm Dialog ─── -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-dialog">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-message">This action cannot be undone.</p>
+    <div class="actions">
+      <button class="btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn-danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast Container ─── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  /* ===================================================================
+   *  TASK DETAIL PAGE JAVASCRIPT
+   *
+   *  Fullscreen modal for viewing/editing a single task with
+   *  comments, activity, attachments, and realtime collaboration.
+   *
+   *  HOW TO OPEN:
+   *    window.openTaskDetail(taskId, boardId, workspaceId)
+   *    — or navigate to ?taskId=X&boardId=Y&workspaceId=Z
+   * =================================================================== */
+
+  // ─── State ──────────────────────────────────────────────────────
+
+  const STATE = {
+    task: null,
+    taskId: null,
+    boardId: null,
+    workspaceId: null,
+    comments: [],
+    activities: [],
+    attachments: [],
+    members: [],
+    currentUser: null,
+    tags: [],
+    typingUsers: {},   // { userId: { name, avatarUrl, timeout } }
+    presenceViewers: [],
+  };
+
+  const params = new URLSearchParams(location.search);
+  const TASK_ID  = parseInt(params.get('taskId'));
+  const BOARD_ID = parseInt(params.get('boardId')) || parseInt(document.documentElement.dataset.boardId) || 0;
+  const WORKSPACE_ID = parseInt(params.get('workspaceId')) || parseInt(document.documentElement.dataset.workspaceId) || 0;
+
+  // ─── Utils ──────────────────────────────────────────────────────
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  function api(path, options = {}) {
+    return fetch(path, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      credentials: 'same-origin',
+      ...options,
+    }).then(async r => {
+      const data = r.status === 204 ? null : await r.json().catch(() => null);
+      return { ok: r.ok, status: r.status, data };
+    });
+  }
+
+  function toast(msg, type = 'info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-10px)';
+      setTimeout(() => el.remove(), 300);
+    }, 3000);
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return '';
+    const diff = Date.now() - new Date(ts).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const h = Math.floor(mins / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'yesterday';
+    return `${d}d ago`;
+  }
+
+  function formatDateTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatDateOnly(ts) {
+    if (!ts) return '';
+    return ts.slice(0, 10);
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function fileSizeStr(bytes) {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  let confirmCallback = null;
+
+  function showConfirm(title, message, onOk) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    confirmCallback = onOk;
+    document.getElementById('confirm-overlay').classList.add('open');
+  }
+
+  document.getElementById('confirm-cancel').addEventListener('click', () => {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    confirmCallback = null;
+  });
+
+  document.getElementById('confirm-ok').addEventListener('click', () => {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  });
+
+  document.getElementById('confirm-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('confirm-overlay').classList.remove('open');
+      confirmCallback = null;
+    }
+  });
+
+  // ─── WebSocket STOMP ────────────────────────────────────────────
+
+  let stompClient = null;
+  let reconnectTimer = null;
+
+  function connectWs() {
+    setWsStatus('connecting');
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = () => {};
+    stompClient.connect({}, () => {
+      setWsStatus('connected');
+      if (STATE.taskId) {
+        stompClient.subscribe(`/topic/task/${STATE.taskId}`, msg => {
+          try { handleWsMessage(JSON.parse(msg.body)); } catch(e) {}
+        });
+        stompClient.subscribe(`/topic/task/${STATE.taskId}/typing`, msg => {
+          try { handleTypingEvent(JSON.parse(msg.body)); } catch(e) {}
+        });
+        stompClient.subscribe(`/topic/task/${STATE.taskId}/presence`, msg => {
+          try { handlePresenceEvent(JSON.parse(msg.body)); } catch(e) {}
+        });
+        // Send join presence
+        stompClient.send(`/app/task/${STATE.taskId}/presence`, {}, JSON.stringify({ action: 'join' }));
+      }
+    }, () => {
+      setWsStatus('disconnected');
+      scheduleReconnect();
+    });
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connectWs, 3000);
+  }
+
+  function setWsStatus(status) {
+    const el = document.getElementById('ws-status');
+    el.className = `ws-status ${status}`;
+    const labels = { connected: 'Live', connecting: 'Connecting...', disconnected: 'Disconnected' };
+    el.querySelector('.label').textContent = labels[status];
+  }
+
+  function handleWsMessage(msg) {
+    const { type, payload } = msg;
+    switch (type) {
+      case 'TASK_UPDATED':     handleTaskUpdated(payload); break;
+      case 'COMMENT_ADDED':    handleCommentAdded(payload); break;
+      case 'COMMENT_UPDATED':  handleCommentUpdated(payload); break;
+      case 'COMMENT_DELETED':  handleCommentDeleted(payload); break;
+      case 'ATTACHMENT_ADDED':   handleAttachmentAdded(payload); break;
+      case 'ATTACHMENT_DELETED': handleAttachmentDeleted(payload); break;
+      case 'ACTIVITY_NEW':     handleActivityNew(payload); break;
+    }
+  }
+
+  function handleTaskUpdated(task) {
+    Object.assign(STATE.task, task);
+    renderTask();
+    toast('Task updated', 'info');
+  }
+
+  function handleCommentAdded(comment) {
+    if (!STATE.comments.find(c => c.id === comment.id)) {
+      STATE.comments.push(comment);
+      renderComments();
+    }
+    toast('New comment', 'info');
+  }
+
+  function handleCommentUpdated(comment) {
+    const idx = STATE.comments.findIndex(c => c.id === comment.id);
+    if (idx !== -1) { STATE.comments[idx] = comment; renderComments(); }
+  }
+
+  function handleCommentDeleted({ commentId }) {
+    STATE.comments = STATE.comments.filter(c => c.id !== commentId);
+    renderComments();
+  }
+
+  function handleAttachmentAdded(attachment) {
+    if (!STATE.attachments.find(a => a.id === attachment.id)) {
+      STATE.attachments.push(attachment);
+      renderAttachments();
+    }
+  }
+
+  function handleAttachmentDeleted({ attachmentId }) {
+    STATE.attachments = STATE.attachments.filter(a => a.id !== attachmentId);
+    renderAttachments();
+  }
+
+  function handleActivityNew(activity) {
+    STATE.activities.unshift(activity);
+    if (STATE.activities.length > 50) STATE.activities.pop();
+    renderActivity();
+  }
+
+  // ─── Typing Indicators ──────────────────────────────────────────
+
+  let typingThrottle = null;
+
+  function sendTyping() {
+    if (!stompClient || !stompClient.connected) return;
+    if (typingThrottle) return;
+    typingThrottle = setTimeout(() => { typingThrottle = null; }, 2000);
+    stompClient.send(`/app/task/${STATE.taskId}/typing`, {}, JSON.stringify({
+      userId: STATE.currentUser?.id || 0,
+      name: STATE.currentUser?.name || 'Someone',
+      avatarUrl: STATE.currentUser?.avatarUrl || '',
+    }));
+  }
+
+  function handleTypingEvent(data) {
+    if (data.userId === STATE.currentUser?.id) return;
+    const existing = STATE.typingUsers[data.userId];
+    if (existing) clearTimeout(existing.timeout);
+    STATE.typingUsers[data.userId] = {
+      name: data.name,
+      avatarUrl: data.avatarUrl,
+      timeout: setTimeout(() => {
+        delete STATE.typingUsers[data.userId];
+        renderTypingIndicator();
+      }, 3000),
+    };
+    renderTypingIndicator();
+  }
+
+  function renderTypingIndicator() {
+    const el = document.getElementById('typing-indicator');
+    const avatars = document.getElementById('typing-avatars');
+    const text = document.getElementById('typing-text');
+    const users = Object.values(STATE.typingUsers);
+    if (!users.length) {
+      el.classList.remove('visible');
+      return;
+    }
+    el.classList.add('visible');
+    avatars.innerHTML = users.map(u =>
+      `<img src="${u.avatarUrl || ''}" alt="${escHtml(u.name)}" />`
+    ).join('');
+    const names = users.map(u => u.name);
+    if (names.length === 1) text.textContent = `${names[0]} is typing`;
+    else if (names.length === 2) text.textContent = `${names[0]} and ${names[1]} are typing`;
+    else text.textContent = `${names[0]} and ${names.length - 1} others are typing`;
+  }
+
+  // ─── Presence ───────────────────────────────────────────────────
+
+  function handlePresenceEvent(data) {
+    if (data.action === 'leave') {
+      STATE.presenceViewers = STATE.presenceViewers.filter(v => v.id !== data.userId);
+    } else {
+      if (!STATE.presenceViewers.find(v => v.id === data.userId) && data.userId !== STATE.currentUser?.id) {
+        STATE.presenceViewers.push({ id: data.userId, name: data.name, avatarUrl: data.avatarUrl });
+      }
+    }
+    renderPresenceAvatars();
+  }
+
+  function renderPresenceAvatars() {
+    const container = document.getElementById('presence-avatars');
+    const viewers = STATE.presenceViewers;
+    if (!viewers.length) {
+      container.innerHTML = '';
+      return;
+    }
+    const maxVisible = 5;
+    const visible = viewers.slice(0, maxVisible);
+    const html = visible.map(v =>
+      `<img class="presence-avatar" src="${v.avatarUrl || ''}" alt="${escHtml(v.name)}" title="${escHtml(v.name)}" />`
+    ).join('');
+    if (viewers.length > maxVisible) {
+      container.innerHTML = html + `<div class="presence-more">+${viewers.length - maxVisible}</div>`;
+    } else {
+      container.innerHTML = html;
+    }
+  }
+
+  // ─── Load Data ──────────────────────────────────────────────────
+
+  /* =====================================================================
+   *  GET /api/tasks/detail/{taskId}
+   *  Purpose:  Fetch full task detail with all metadata
+   *  Request:  path variable taskId
+   *  Response: {
+   *    "id": 1,
+   *    "title": "Design login page",
+   *    "description": "<p>Details...</p>",
+   *    "priority": "MEDIUM",
+   *    "taskStatus": "TODO",
+   *    "dueDate": "2026-06-15T00:00:00Z",
+   *    "assignee": { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *    "boardColumn": { "id": 1, "title": "To Do" },
+   *    "board": { "id": 1, "title": "Sprint 24" },
+   *    "createdBy": "Jane",
+   *    "createdAt": "2026-06-01T10:00:00Z",
+   *    "updatedAt": "2026-06-02T14:30:00Z",
+   *    "tags": ["frontend", "design"],
+   *    "workspaceId": 1
+   *  }
+   * ===================================================================== */
+  async function loadTask() {
+    const res = await api(`/api/tasks/detail/${TASK_ID}`);
+    if (!res.ok) { showError('Task not found'); return; }
+    STATE.task = res.data;
+    STATE.tags = res.data.tags || [];
+    document.getElementById('loading-skeleton').style.display = 'none';
+    document.getElementById('task-content').style.display = 'block';
+    renderTask();
+    document.getElementById('breadcrumb').innerHTML = `<span>Board / </span><strong>${escHtml(res.data.title)}</strong>`;
+  }
+
+  /* =====================================================================
+   *  GET /api/tasks/{taskId}/comments
+   *  Purpose:  Fetch all comments for this task
+   *  Response: { "comments": [
+   *    { "id": 1, "content": "Looks great!", "edited": false,
+   *      "author": { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *      "createdAt": "2026-06-01T12:00:00Z" }
+   *  ]}
+   * ===================================================================== */
+  async function loadComments() {
+    const res = await api(`/api/tasks/${TASK_ID}/comments`);
+    if (!res.ok) return;
+    STATE.comments = res.data.comments || [];
+    renderComments();
+  }
+
+  /* =====================================================================
+   *  GET /api/tasks/{taskId}/activity
+   *  Purpose:  Fetch activity history for this specific task
+   *  Response: { "activities": [
+   *    { "id": 1, "type": "TASK_CREATED", "message": "Jane created this task",
+   *      "user": { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *      "timestamp": "2026-06-01T10:00:00Z" }
+   *  ]}
+   * ===================================================================== */
+  async function loadActivity() {
+    const res = await api(`/api/tasks/${TASK_ID}/activity`);
+    if (!res.ok) return;
+    STATE.activities = res.data.activities || [];
+    renderActivity();
+  }
+
+  /* =====================================================================
+   *  GET /api/tasks/{taskId}/attachments
+   *  Purpose:  Fetch all attachments for this task
+   *  Response: { "attachments": [
+   *    { "id": 1, "fileName": "screenshot.png", "fileUrl": "/uploads/...",
+   *      "fileSize": 123456, "contentType": "image/png", "createdAt": "..." }
+   *  ]}
+   * ===================================================================== */
+  async function loadAttachments() {
+    const res = await api(`/api/tasks/${TASK_ID}/attachments`);
+    if (!res.ok) return;
+    STATE.attachments = res.data.attachments || [];
+    renderAttachments();
+  }
+
+  /* =====================================================================
+   *  GET /api/tasks/{taskId}/members
+   *  Purpose:  Fetch workspace members for assignee dropdown
+   *  Response: { "members": [
+   *    { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *    { "id": 2, "name": "John", "avatarUrl": "" }
+   *  ]}
+   * ===================================================================== */
+  async function loadMembers() {
+    if (!WORKSPACE_ID) return;
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/members`);
+    if (!res.ok) return;
+    STATE.members = res.data.members || [];
+    renderAssigneeDropdown();
+  }
+
+  /* =====================================================================
+   *  GET /api/users/me
+   *  Purpose:  Fetch current authenticated user info
+   *  Response: { "id": 1, "name": "Jane", "avatarUrl": "", "email": "..." }
+   * ===================================================================== */
+  async function loadCurrentUser() {
+    const res = await api('/api/users/me');
+    if (!res.ok) return;
+    STATE.currentUser = res.data;
+    const avatar = document.getElementById('current-user-avatar');
+    avatar.src = STATE.currentUser.avatarUrl || '';
+    avatar.alt = STATE.currentUser.name || '';
+    avatar.onerror = function() { this.src = ''; this.style.background = 'var(--surface-hover)'; };
+  }
+
+  // Presence is handled entirely via WebSocket — see handlePresenceEvent()
+
+  // ─── Render Task ────────────────────────────────────────────────
+
+  function renderTask() {
+    const t = STATE.task;
+    if (!t) return;
+
+    // Title
+    const titleInput = document.getElementById('task-title-input');
+    titleInput.value = t.title || '';
+    titleInput.placeholder = 'Task title';
+
+    // Description
+    const desc = document.getElementById('desc-editor');
+    desc.innerHTML = t.description || '';
+
+    // Assignee
+    const assigneeName = document.getElementById('assignee-name');
+    const assigneeAvatar = document.getElementById('assignee-avatar');
+    if (t.assignee) {
+      assigneeName.textContent = t.assignee.name || 'Unassigned';
+      assigneeAvatar.src = t.assignee.avatarUrl || '';
+      assigneeAvatar.style.display = '';
+      assigneeAvatar.onerror = function() { this.src = ''; this.style.display = 'none'; };
+    } else {
+      assigneeName.textContent = 'Unassigned';
+      assigneeAvatar.style.display = 'none';
+    }
+
+    // Due Date
+    const dueInput = document.getElementById('due-date-input');
+    dueInput.value = t.dueDate ? formatDateOnly(t.dueDate) : '';
+
+    // Priority
+    document.getElementById('priority-select').value = (t.priority || 'medium').toLowerCase();
+
+    // Status
+    document.getElementById('status-select').value = t.taskStatus || 'TODO';
+
+    // Tags
+    renderTags();
+
+    // Metadata
+    document.getElementById('meta-created-by').textContent = t.createdBy || '—';
+    document.getElementById('meta-created-at').textContent = formatDateTime(t.createdAt);
+    document.getElementById('meta-updated-at').textContent = formatDateTime(t.updatedAt);
+    document.getElementById('meta-board').textContent = t.board?.title || '—';
+    document.getElementById('meta-column').textContent = t.boardColumn?.title || '—';
+  }
+
+  // ─── Tags ───────────────────────────────────────────────────────
+
+  function renderTags() {
+    const container = document.getElementById('tags-container');
+    const tags = STATE.tags || [];
+    const addBtn = container.querySelector('#tag-add-btn');
+    const popup = container.querySelector('#tag-input-popup');
+    container.innerHTML = '';
+    tags.forEach(tag => {
+      const el = document.createElement('span');
+      el.className = 'tag';
+      el.innerHTML = `${escHtml(tag)} <button class="tag-remove" data-tag="${escHtml(tag)}">×</button>`;
+      el.querySelector('.tag-remove').addEventListener('click', () => removeTag(tag));
+      container.appendChild(el);
+    });
+    container.appendChild(addBtn);
+    container.appendChild(popup);
+  }
+
+  function removeTag(tag) {
+    STATE.tags = STATE.tags.filter(t => t !== tag);
+    renderTags();
+    updateTags();
+  }
+
+  let tagDebounce = null;
+
+  function updateTags() {
+    clearTimeout(tagDebounce);
+    tagDebounce = setTimeout(async () => {
+      /* =================================================================
+       *  PUT /api/tasks/{taskId}/tags
+       *  Purpose:  Update tags on a task
+       *  Request:  { "tags": ["frontend", "bug"] }
+       *  Response: { "tags": ["frontend", "bug"] }
+       * ================================================================= */
+      const res = await api(`/api/tasks/${TASK_ID}/tags`, {
+        method: 'PUT',
+        body: JSON.stringify({ tags: STATE.tags }),
+      });
+      if (!res.ok) toast('Failed to update tags', 'error');
+    }, 300);
+  }
+
+  document.getElementById('tag-add-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    const popup = document.getElementById('tag-input-popup');
+    popup.classList.toggle('open');
+    if (popup.classList.contains('open')) {
+      document.getElementById('tag-input').focus();
+    }
+  });
+
+  document.getElementById('tag-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const val = e.target.value.trim();
+      if (val && !STATE.tags.includes(val)) {
+        STATE.tags.push(val);
+        renderTags();
+        updateTags();
+      }
+      e.target.value = '';
+      document.getElementById('tag-input-popup').classList.remove('open');
+    }
+    if (e.key === 'Escape') {
+      e.target.value = '';
+      document.getElementById('tag-input-popup').classList.remove('open');
+    }
+  });
+
+  // Close tag popup on outside click
+  document.addEventListener('click', e => {
+    const popup = document.getElementById('tag-input-popup');
+    if (popup.classList.contains('open') && !e.target.closest('#tags-container')) {
+      popup.classList.remove('open');
+    }
+  });
+
+  // ─── Title Editing ──────────────────────────────────────────────
+
+  let titleTimeout = null;
+
+  document.getElementById('task-title-input').addEventListener('input', function() {
+    const indicator = document.getElementById('title-saving-indicator');
+    indicator.classList.add('visible');
+    clearTimeout(titleTimeout);
+    titleTimeout = setTimeout(async () => {
+      const val = this.value.trim();
+      if (val && val !== STATE.task.title) {
+        const old = STATE.task.title;
+        STATE.task.title = val;
+        const res = await updateTaskApi({ title: val });
+        if (!res.ok) { STATE.task.title = old; this.value = old; toast('Failed to update title', 'error'); }
+        else document.getElementById('breadcrumb').innerHTML = `<span>Board / </span><strong>${escHtml(val)}</strong>`;
+      }
+      indicator.classList.remove('visible');
+    }, 500);
+  });
+
+  document.getElementById('task-title-input').addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      this.value = STATE.task.title || '';
+      this.blur();
+    }
+  });
+
+  // ─── Description Editing ────────────────────────────────────────
+
+  let descTimeout = null;
+
+  document.getElementById('desc-editor').addEventListener('input', function() {
+    clearTimeout(descTimeout);
+    descTimeout = setTimeout(async () => {
+      const html = this.innerHTML;
+      if (html !== (STATE.task.description || '')) {
+        const old = STATE.task.description;
+        STATE.task.description = html;
+        const res = await updateTaskApi({ description: html });
+        if (!res.ok) { STATE.task.description = old; this.innerHTML = old; toast('Failed to update description', 'error'); }
+      }
+    }, 500);
+  });
+
+  // Description toolbar
+  $$('.desc-toolbar button[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const editor = document.getElementById('desc-editor');
+      editor.focus();
+      const cmd = btn.dataset.cmd;
+      if (cmd === 'code') {
+        const sel = window.getSelection();
+        const text = sel.toString();
+        if (text) {
+          document.execCommand('insertHTML', false, `<code>${escHtml(text)}</code>`);
+        }
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+      editor.dispatchEvent(new Event('input'));
+    });
+  });
+
+  // ─── Sidebar Field Changes ──────────────────────────────────────
+
+  document.getElementById('priority-select').addEventListener('change', async function() {
+    const val = this.value.toUpperCase();
+    const old = STATE.task.priority;
+    STATE.task.priority = val;
+    const res = await updateTaskApi({ priority: val });
+    if (!res.ok) { STATE.task.priority = old; this.value = old.toLowerCase(); toast('Failed to update priority', 'error'); }
+    else toast('Priority updated', 'success');
+  });
+
+  document.getElementById('status-select').addEventListener('change', async function() {
+    const val = this.value;
+    const old = STATE.task.taskStatus;
+    STATE.task.taskStatus = val;
+
+    /* =================================================================
+     *  PUT /api/tasks/{taskId}/status
+     *  Purpose:  Update task completion / workflow status
+     *  Request:  { "status": "IN_PROGRESS" }
+     *  Response: { "id": 42, "status": "IN_PROGRESS" }
+     * ================================================================= */
+    const res = await api(`/api/tasks/${TASK_ID}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: val }),
+    });
+    if (!res.ok) { STATE.task.taskStatus = old; this.value = old; toast('Failed to update status', 'error'); }
+    else toast('Status updated', 'success');
+  });
+
+  document.getElementById('due-date-input').addEventListener('change', async function() {
+    const val = this.value || null;
+    const old = STATE.task.dueDate;
+    STATE.task.dueDate = val ? val + 'T00:00:00Z' : null;
+    const res = await updateTaskApi({ dueDate: STATE.task.dueDate });
+    if (!res.ok) { STATE.task.dueDate = old; this.value = old ? formatDateOnly(old) : ''; toast('Failed to update due date', 'error'); }
+    else toast('Due date updated', 'success');
+  });
+
+  // ─── Assignee Selector ──────────────────────────────────────────
+
+  document.getElementById('assignee-selector').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('assignee-dropdown').classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => {
+    document.getElementById('assignee-dropdown').classList.remove('open');
+  });
+
+  function renderAssigneeDropdown() {
+    const dropdown = document.getElementById('assignee-dropdown');
+    const members = STATE.members || [];
+    let html = '<div class="assignee-dropdown-item" data-id="">' +
+      '<span class="placeholder">Unassigned</span>' +
+      (!STATE.task?.assignee ? '<span class="check">✓</span>' : '') +
+      '</div>';
+    members.forEach(m => {
+      const selected = STATE.task?.assignee?.id === m.id;
+      html += `<div class="assignee-dropdown-item" data-id="${m.id}">
+        <img src="${m.avatarUrl || ''}" alt="${escHtml(m.name)}" />
+        <span>${escHtml(m.name)}</span>
+        ${selected ? '<span class="check">✓</span>' : ''}
+      </div>`;
+    });
+    dropdown.innerHTML = html;
+
+    dropdown.querySelectorAll('.assignee-dropdown-item').forEach(item => {
+      item.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = item.dataset.id ? parseInt(item.dataset.id) : null;
+        const old = STATE.task.assignee;
+        const oldId = old?.id || null;
+        STATE.task.assignee = id ? STATE.members.find(m => m.id === id) || old : null;
+        renderTask();
+        dropdown.classList.remove('open');
+        const res = await updateTaskApi({ assigneeId: id });
+        if (!res.ok) { STATE.task.assignee = old; renderTask(); toast('Failed to update assignee', 'error'); }
+        else toast('Assignee updated', 'success');
+      });
+    });
+  }
+
+  // ─── Comments ───────────────────────────────────────────────────
+
+  document.getElementById('comment-input').addEventListener('input', function() {
+    const btn = document.getElementById('comment-post-btn');
+    btn.disabled = !this.value.trim();
+    // Auto-resize
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+    sendTyping();
+  });
+
+  document.getElementById('comment-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById('comment-post-btn').click();
+    }
+  });
+
+  document.getElementById('comment-post-btn').addEventListener('click', async () => {
+    const input = document.getElementById('comment-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    const btn = document.getElementById('comment-post-btn');
+    btn.disabled = true;
+
+    /* =================================================================
+     *  POST /api/tasks/{taskId}/comments
+     *  Purpose:  Add a comment to the task
+     *  Request:  { "content": "Looks great!" }
+     *  Response: {
+     *    "id": 1, "content": "Looks great!", "edited": false,
+     *    "author": { "id": 1, "name": "Jane", "avatarUrl": "" },
+     *    "createdAt": "2026-06-01T12:00:00Z"
+     *  }
+     * ================================================================= */
+    const res = await api(`/api/tasks/${TASK_ID}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+    if (res.ok) {
+      var comment = res.data;
+      STATE.comments.push(res.data);
+      renderComments();
+      input.value = '';
+      input.style.height = 'auto';
+      toast('Comment posted', 'success');
+    } else {
+      toast('Failed to post comment', 'error');
+    }
+    btn.disabled = false;
+  });
+
+  function renderComments() {
+    const list = document.getElementById('comment-list');
+    const count = document.getElementById('comment-count');
+    const comments = STATE.comments || [];
+
+    count.textContent = comments.length;
+
+    if (!comments.length) {
+      list.innerHTML = '<div class="empty-state"><p>No comments yet</p></div>';
+      return;
+    }
+
+    list.innerHTML = comments.map(c => `
+      <div class="comment-item" data-comment-id="${c.id}">
+        <img class="comment-avatar" src="${c.author?.avatarUrl || ''}" alt="${escHtml(c.author?.name || 'User')}" />
+        <div class="comment-body">
+          <div class="comment-header">
+            <span class="comment-author">${escHtml(c.author?.name || 'Unknown')}</span>
+            <span class="comment-time">${timeAgo(c.createdAt)}</span>
+            ${c.edited ? '<span class="comment-edited">(edited)</span>' : ''}
+          </div>
+          <div class="comment-text">${escHtml(c.content)}</div>
+          <div class="comment-actions">
+            <button class="edit-btn" onclick="editComment(${c.id})">Edit</button>
+            <button class="delete-btn" onclick="deleteComment(${c.id})">Delete</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.editComment = function(commentId) {
+    const item = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+    if (!item) return;
+    const textEl = item.querySelector('.comment-text');
+    const actions = item.querySelector('.comment-actions');
+    const original = textEl.textContent;
+
+    /* =================================================================
+     *  PUT /api/tasks/{taskId}/comments/{commentId}
+     *  Purpose:  Edit a comment
+     *  Request:  { "content": "Updated text" }
+     *  Response: { "id": 1, "content": "Updated text", "edited": true, ... }
+     * ================================================================= */
+    const textarea = document.createElement('textarea');
+    textarea.className = 'comment-edit-input';
+    textarea.value = original;
+
+    const editActions = document.createElement('div');
+    editActions.className = 'comment-edit-actions';
+    editActions.innerHTML = `
+      <button class="save">Save</button>
+      <button class="cancel">Cancel</button>
+    `;
+
+    textEl.replaceWith(textarea);
+    actions.replaceWith(editActions);
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    editActions.querySelector('.save').addEventListener('click', async () => {
+      const val = textarea.value.trim();
+      if (!val || val === original) {
+        textarea.replaceWith(textEl);
+        editActions.replaceWith(actions);
+        return;
+      }
+      const res = await api(`/api/tasks/${TASK_ID}/comments/${commentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content: val }),
+      });
+      if (res.ok) {
+        const idx = STATE.comments.findIndex(c => c.id === commentId);
+        if (idx !== -1) STATE.comments[idx] = res.data;
+        renderComments();
+        toast('Comment updated', 'success');
+      } else {
+        textarea.replaceWith(textEl);
+        editActions.replaceWith(actions);
+        toast('Failed to update comment', 'error');
+      }
+    });
+
+    editActions.querySelector('.cancel').addEventListener('click', () => {
+      textarea.replaceWith(textEl);
+      editActions.replaceWith(actions);
+    });
+
+    textarea.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        editActions.querySelector('.save').click();
+      }
+      if (e.key === 'Escape') editActions.querySelector('.cancel').click();
+    });
+  };
+
+  /* =====================================================================
+   *  DELETE /api/tasks/{taskId}/comments/{commentId}
+   *  Purpose:  Delete a comment
+   *  Response: { "message": "Comment deleted" }
+   * ===================================================================== */
+  window.deleteComment = function(commentId) {
+    const comment = STATE.comments.find(c => c.id === commentId);
+    showConfirm(
+      'Delete comment?',
+      comment ? `"${comment.content.slice(0, 60)}${comment.content.length > 60 ? '...' : ''}"` : '',
+      async () => {
+        const res = await api(`/api/tasks/${TASK_ID}/comments/${commentId}`, { method: 'DELETE' });
+        if (res.ok) {
+          STATE.comments = STATE.comments.filter(c => c.id !== commentId);
+          renderComments();
+          toast('Comment deleted', 'info');
+        } else {
+          toast('Failed to delete comment', 'error');
+        }
+      }
+    );
+  };
+
+  // ─── Attachments ────────────────────────────────────────────────
+
+  function renderAttachments() {
+    const list = document.getElementById('attachment-list');
+    const count = document.getElementById('attachment-count');
+    const attachments = STATE.attachments || [];
+    count.textContent = attachments.length;
+
+    if (!attachments.length) {
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = attachments.map(a => `
+      <div class="attachment-item" data-attachment-id="${a.id}">
+        <div class="attachment-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="attachment-info">
+          <a class="attachment-name" href="${a.fileUrl || '#'}" target="_blank" rel="noopener">${escHtml(a.fileName)}</a>
+          <div class="attachment-meta">${fileSizeStr(a.fileSize)} · ${timeAgo(a.createdAt)}</div>
+        </div>
+        <button class="attachment-delete" onclick="deleteAttachment(${a.id})" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  /* =====================================================================
+   *  DELETE /api/tasks/{taskId}/attachments/{attachmentId}
+   *  Purpose:  Delete an attachment
+   *  Response: { "message": "Attachment deleted" }
+   * ===================================================================== */
+  window.deleteAttachment = function(attachmentId) {
+    showConfirm('Delete attachment?', 'This cannot be undone.', async () => {
+      const res = await api(`/api/tasks/${TASK_ID}/attachments/${attachmentId}`, { method: 'DELETE' });
+      if (res.ok) {
+        STATE.attachments = STATE.attachments.filter(a => a.id !== attachmentId);
+        renderAttachments();
+        toast('Attachment deleted', 'info');
+      } else {
+        toast('Failed to delete attachment', 'error');
+      }
+    });
+  };
+
+  // ─── File Upload ────────────────────────────────────────────────
+
+  const dropzone = document.getElementById('attachment-dropzone');
+  const fileInput = document.getElementById('file-input');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+
+  dropzone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) uploadFiles(fileInput.files);
+    fileInput.value = '';
+  });
+
+  /* =====================================================================
+   *  POST /api/tasks/{taskId}/attachments
+   *  Purpose:  Upload file attachment(s)
+   *  Request:  multipart/form-data with field "file"
+   *  Response: {
+   *    "id": 1, "fileName": "screenshot.png", "fileUrl": "/uploads/...",
+   *    "fileSize": 123456, "contentType": "image/png", "createdAt": "..."
+   *  }
+   * ===================================================================== */
+  async function uploadFiles(files) {
+    for (const file of files) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast(`"${file.name}" exceeds 25 MB limit`, 'error');
+        continue;
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch(`/api/tasks/${TASK_ID}/attachments`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: formData,
+        });
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        if (res.ok && data) {
+          STATE.attachments.push(data);
+          renderAttachments();
+          toast(`"${file.name}" uploaded`, 'success');
+        } else {
+          toast(`Failed to upload "${file.name}"`, 'error');
+        }
+      } catch {
+        toast(`Failed to upload "${file.name}"`, 'error');
+      }
+    }
+  }
+
+  // ─── Activity ───────────────────────────────────────────────────
+
+  function renderActivity() {
+    const list = document.getElementById('activity-list');
+    const activities = STATE.activities || [];
+
+    if (!activities.length) {
+      list.innerHTML = '<div class="empty-state"><p>No activity yet</p></div>';
+      return;
+    }
+
+    list.innerHTML = activities.map(a => `
+      <div class="activity-item">
+        <div class="activity-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="activity-body">
+          <div class="activity-text">${a.message || a.type || ''}</div>
+          <div class="activity-time">${timeAgo(a.timestamp)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ─── Update Task API ────────────────────────────────────────────
+
+  /* =====================================================================
+   *  PUT /api/tasks/{taskId}
+   *  Purpose:  Partial update of task fields (title, description, priority,
+   *            status, assigneeId, dueDate, boardColumnId)
+   *  Request:  { "title": "...", "description": "...", "priority": "HIGH",
+   *              "status": "IN_PROGRESS", "assigneeId": 1,
+   *              "dueDate": "2026-06-15T00:00:00Z" }
+   *  Response: { "id": 1, ...updated fields... }
+   * ===================================================================== */
+  async function updateTaskApi(data) {
+    const res = await api(`/api/tasks/${TASK_ID}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (res.ok && res.data) {
+      Object.assign(STATE.task, res.data);
+    }
+    return res;
+  }
+
+  // ─── Delete Task ────────────────────────────────────────────────
+
+  document.getElementById('delete-task-btn').addEventListener('click', () => {
+    showConfirm(
+      'Delete this task?',
+      'This action cannot be undone. All comments and attachments will be removed.',
+      async () => {
+        /* =================================================================
+         *  DELETE /api/tasks/{taskId}
+         *  Purpose:  Delete a task
+         *  Response: { "message": "Task deleted" }
+         * ================================================================= */
+        const res = await api(`/api/tasks/${TASK_ID}`, { method: 'DELETE' });
+        if (res.ok) {
+          toast('Task deleted', 'info');
+          goBack();
+        } else {
+          toast('Failed to delete task', 'error');
+        }
+      }
+    );
+  });
+
+  // ─── Navigation ─────────────────────────────────────────────────
+
+  function goBack() {
+    if (document.referrer && document.referrer !== location.href) {
+      window.history.back();
+    } else if (BOARD_ID) {
+      window.location.href = `/boards/${BOARD_ID}`;
+    } else {
+      window.location.href = '/dashboard';
+    }
+  }
+
+  document.getElementById('back-btn').addEventListener('click', goBack);
+
+  function showError(msg) {
+    document.getElementById('loading-skeleton').style.display = 'none';
+    document.getElementById('task-content').style.display = 'block';
+    document.getElementById('task-content').innerHTML = `<div class="empty-state" style="padding:60px 20px"><p style="font-size:16px;color:var(--text-secondary)">${msg}</p></div>`;
+  }
+
+  // ─── Init ───────────────────────────────────────────────────────
+
+  async function init() {
+    if (!TASK_ID) {
+      showError('No task ID specified');
+      return;
+    }
+
+    await loadCurrentUser();
+    await loadTask();
+    await Promise.all([
+      loadComments(),
+      loadActivity(),
+      loadAttachments(),
+      loadMembers(),
+    ]);
+
+    connectWs();
+  }
+
+  init();
+
+  // ─── Periodic Refresh ───────────────────────────────────────────
+  // (Presence is handled via WebSocket)
+
+  /* ===================================================================
+   *  SUMMARY OF API ENDPOINTS THIS PAGE USES
+   *  ===================================================================
+   *
+   *  EXISTING ENDPOINTS (already wired on backend):
+   *  ───────────────────────────────────────────────────────────────────
+   *  1. PUT    /api/tasks/{taskId}        — Update task (partial)
+   *  2. DELETE /api/tasks/{taskId}        — Delete task
+   *
+   *  NEW ENDPOINTS NEEDED (frontend expects these):
+   *  ───────────────────────────────────────────────────────────────────
+   *  3. GET    /api/tasks/detail/{taskId}
+   *       → Fetches full task with all metadata (assignee, board,
+   *         boardColumn, tags, timestamps)
+   *       → Response: {
+   *           id, title, description, priority, taskStatus, dueDate,
+   *           assignee: { id, name, avatarUrl },
+   *           boardColumn: { id, title },
+   *           board: { id, title },
+   *           createdBy, createdAt, updatedAt,
+   *           tags: ["frontend", "design"],
+   *           workspaceId
+   *         }
+   *
+   *  4. GET    /api/tasks/{taskId}/comments
+   *       → Fetch all comments for a task
+   *       → Response: { comments: [{ id, content, edited,
+   *           author: { id, name, avatarUrl }, createdAt }] }
+   *
+   *  5. POST   /api/tasks/{taskId}/comments
+   *       → Add a comment
+   *       → Request:  { "content": "text" }
+   *       → Response: { id, content, edited: false, author, createdAt }
+   *
+   *  6. PUT    /api/tasks/{taskId}/comments/{commentId}
+   *       → Edit a comment
+   *       → Request:  { "content": "edited text" }
+   *       → Response: updated comment object (edited: true)
+   *
+   *  7. DELETE /api/tasks/{taskId}/comments/{commentId}
+   *       → Delete a comment
+   *       → Response: { "message": "Comment deleted" }
+   *
+   *  8. GET    /api/tasks/{taskId}/attachments
+   *       → Fetch all attachments for a task
+   *       → Response: { attachments: [{ id, fileName, fileUrl,
+   *           fileSize, contentType, createdAt }] }
+   *
+   *  9. POST   /api/tasks/{taskId}/attachments
+   *       → Upload file attachment (multipart)
+   *       → Request:  multipart/form-data with field "file"
+   *       → Response: { id, fileName, fileUrl, fileSize, contentType,
+   *           createdAt }
+   *
+   *  10. DELETE /api/tasks/{taskId}/attachments/{attachmentId}
+   *       → Delete an attachment
+   *       → Response: { "message": "Attachment deleted" }
+   *
+   *  11. GET    /api/tasks/{taskId}/activity
+   *       → Fetch activity history for this task
+   *       → Response: { activities: [{ id, type, message,
+   *           user: { id, name, avatarUrl }, timestamp }] }
+   *
+   *  12. PUT    /api/tasks/{taskId}/tags
+   *       → Update tags on a task
+   *       → Request:  { "tags": ["frontend", "bug"] }
+   *       → Response: { "tags": ["frontend", "bug"] }
+   *
+   *  13. GET    /api/tasks/{taskId}/members
+   *       → Get workspace members for assignee dropdown
+   *       → Actually use: GET /api/workspaces/{workspaceId}/members
+   *       → Response: { members: [{ id, name, avatarUrl }] }
+   *
+   *  15. GET    /api/users/me
+   *       → Get current authenticated user
+   *       → Response: { id, name, avatarUrl, email }
+   *
+   *  WEBSOCKET TOPICS (new ones needed for this page):
+   *  ───────────────────────────────────────────────────────────────────
+   *  Subscribe /topic/task/{taskId}
+   *       → Receives { type, payload } for task changes
+   *       → Types: TASK_UPDATED, COMMENT_ADDED, COMMENT_UPDATED,
+   *         COMMENT_DELETED, ATTACHMENT_ADDED, ATTACHMENT_DELETED,
+   *         ACTIVITY_NEW
+   *
+   *  Subscribe /topic/task/{taskId}/typing
+   *       → Receives { userId, name, avatarUrl }
+   *
+   *  Subscribe /topic/task/{taskId}/presence
+   *       → Receives { action: "join"|"leave", userId, name, avatarUrl }
+   *
+   *  Send /app/task/{taskId}/typing
+   *       → Sends { userId, name, avatarUrl }
+   *
+   *  Send /app/task/{taskId}/presence
+   *       → Sends { action: "join" }
+   * =================================================================== */
+</script>
+
+</body>
+</html>

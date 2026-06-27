@@ -492,7 +492,7 @@
         <!-- Options -->
         <div class="options-row">
           <label>
-            <input type="checkbox" name="remember" id="remember" />
+            <input type="checkbox" name="remember-me" id="remember" />
             Remember me
           </label>
           <a href="#" id="forgot-link">Forgot password?</a>
@@ -620,74 +620,41 @@
       submitBtn.disabled = true;
 
       try {
-         /*
-          * ─── API REQUEST ──────────────────────────────────
-          * Endpoint: POST /api/auth/login
-          *
-          * The backend sets an HttpOnly session cookie on success.
-          * If "remember" is true, the session cookie gets a long
-          * max-age (e.g. 30 days). Otherwise it's a session cookie.
-          *
-          * Request body:
-          * {
-          *   "email": "you@company.com",
-          *   "password": "your-password",
-          *   "remember": true | false
-          * }
-          *
-          * Success response (200):
-          * {
-          *   "message": "Authenticated successfully.",
-          *   "user": {
-          *     "id": "uuid",
-          *     "email": "you@company.com",
-          *     "name": "Jane Doe",
-          *     "avatarUrl": "https://..."
-          *   }
-          * }
-          *
-          * Error response (401):
-          * {
-          *   "message": "Invalid email or password."
-          * }
-          *
-          * Error response (422):
-          * {
-          *   "message": "Validation error."
-          * }
-          *
-          * Error response (429):
-          * {
-          *   "message": "Too many attempts. Try again in 30 seconds.",
-          *   "retryAfter": 30
-          * }
-          *
-          * Error response (500):
-          * {
-          *   "message": "An unexpected error occurred. Please try again."
-          * }
-          */
-
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, remember }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          showError(data.message || 'Login failed. Please try again.');
-          return;
-        }
-
         /*
-         * On success the browser automatically stores the
-         * HttpOnly session cookie from the Set-Cookie header.
-         * No manual token storage needed.
+         * ─── FORM LOGIN ────────────────────────────────────
+         * Spring Security's formLogin() processes POST /login
+         * with application/x-www-form-urlencoded data.
+         *
+         * Parameters expected (from SecurityConfig.java):
+         *   email      — usernameParameter("email")
+         *   password   — passwordParameter("password")
+         *   remember-me — Spring Security's default remember-me param
+         *
+         * On success: 302 redirect to /dashboard (session cookie set)
+         * On failure: 302 redirect to /login?error
          */
 
-        window.location.href = '/dashboard';
+        const params = new URLSearchParams();
+        params.append('email', email);
+        params.append('password', password);
+        if (remember) params.append('remember-me', 'true');
+
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params,
+        });
+
+        /*
+         * fetch follows the 302 redirect by default.
+         * If auth succeeded → final URL is /dashboard (status 200)
+         * If auth failed   → final URL is /login?error (status 200)
+         */
+        if (response.url && !response.url.includes('?error')) {
+          window.location.href = '/dashboard';
+        } else {
+          showError('Invalid email or password.');
+        }
 
       } catch (err) {
         showError('Network error. Check your connection and try again.');
@@ -739,6 +706,13 @@
     document.getElementById('oauth-github').addEventListener('click', () => {
       window.location.href = '/oauth2/authorization/github';
     });
+
+    /* ─── Check for error on page load ─── */
+    if (window.location.search.includes('error')) {
+      showError('Invalid email or password.');
+      // Clean URL without reload
+      history.replaceState(null, '', window.location.pathname);
+    }
   })();
 </script>
 </body>

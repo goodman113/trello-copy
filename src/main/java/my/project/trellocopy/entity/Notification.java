@@ -27,4 +27,14 @@ public class Notification extends BaseEntity {
 
     private Boolean read;
 
+    @ManyToOne
+    private User actor;
+
+    private Long boardId;
+
+    private Long workspaceId;
+
+    private Long taskId;
+
+
 }

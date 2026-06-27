@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications Panel — CollabHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       NOTIFICATION PANEL — Copy this <style> block into your page.
+       Uses the same CSS custom properties as dashboard.html.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* ─── Dropdown overlay ─── */
+    .notif-overlay {
+      position: fixed;
+      inset: 0;
+      background: transparent;
+      z-index: 150;
+      display: none;
+    }
+    .notif-overlay.open { display: block; }
+
+    .notif-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 430px;
+      max-height: 620px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 16px 56px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: notif-in .2s ease;
+      transform-origin: top right;
+    }
+
+    @keyframes notif-in {
+      from { opacity: 0; transform: translateY(-8px) scale(.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ─── Header ─── */
+    .notif-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .notif-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .notif-header h2 svg { width: 20px; height: 20px; color: var(--accent); }
+
+    .notif-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .notif-mark-all-btn {
+      font-size: 12px;
+      font-weight: 550;
+      color: var(--accent);
+      background: none;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      transition: background .15s;
+      white-space: nowrap;
+    }
+    .notif-mark-all-btn:hover { background: var(--accent-dim); }
+    .notif-mark-all-btn:disabled { opacity: .4; cursor: default; }
+    .notif-mark-all-btn:disabled:hover { background: none; }
+
+    .notif-close-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .notif-close-btn:hover { background: var(--surface-hover); color: var(--text); }
+    .notif-close-btn svg { width: 18px; height: 18px; }
+
+    /* ─── Filter tabs ─── */
+    .notif-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 10px 18px 0;
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+    .notif-tabs::-webkit-scrollbar { height: 0; }
+
+    .notif-tab {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 14px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .notif-tab:hover { color: var(--text); background: var(--surface-hover); }
+    .notif-tab.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 550;
+    }
+
+    /* ─── Scrollable list ─── */
+    .notif-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .notif-scroll::-webkit-scrollbar { width: 4px; }
+    .notif-scroll::-webkit-scrollbar-track { background: transparent; }
+    .notif-scroll::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+    /* ─── Date group ─── */
+    .notif-date-group { padding: 0 0 4px; }
+
+    .notif-date-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      padding: 12px 18px 6px;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 1;
+    }
+
+    /* ─── Notification item ─── */
+    .notif-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: background .15s;
+      position: relative;
+    }
+    .notif-item:hover { background: var(--surface-hover); }
+    .notif-item.unread { background: rgba(99,102,241,.04); }
+    .notif-item.unread:hover { background: rgba(99,102,241,.08); }
+    .notif-item.removing { opacity: 0; transform: translateX(20px); transition: all .3s ease; }
+
+    /* ─── Unread dot ─── */
+    .notif-unread-dot {
+      width: 8px;
+      height: 8px;
+      min-width: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 6px;
+      transition: opacity .3s;
+    }
+    .notif-item.read .notif-unread-dot { opacity: 0; }
+
+    /* ─── Type icon ─── */
+    .notif-type-icon {
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .notif-type-icon svg { width: 16px; height: 16px; }
+
+    .notif-type-icon.task-assigned    { background: rgba(96,165,250,.15); color: #60a5fa; }
+    .notif-type-icon.mentioned       { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .notif-type-icon.task-updated    { background: rgba(99,102,241,.15); color: #818cf8; }
+    .notif-type-icon.board-invite    { background: rgba(52,211,153,.15); color: #34d399; }
+
+    /* ─── Content ─── */
+    .notif-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .notif-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .notif-item.read .notif-title { color: var(--text-secondary); }
+
+    .notif-message {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .notif-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .notif-actor-avatar {
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface-hover);
+    }
+
+    .notif-actor-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .notif-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ─── Hover actions ─── */
+    .notif-hover-actions {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+      align-items: center;
+      gap: 4px;
+      background: var(--surface-hover);
+      padding: 2px;
+      border-radius: var(--radius-sm);
+    }
+    .notif-item:hover .notif-hover-actions { display: flex; }
+
+    .notif-mark-read-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color .15s, background .15s;
+    }
+    .notif-mark-read-btn:hover { color: var(--accent); background: var(--accent-dim); }
+    .notif-mark-read-btn svg { width: 15px; height: 15px; }
+
+    /* ─── Bottom sentinel (infinite scroll) ─── */
+    .notif-sentinel {
+      height: 1px;
+      width: 100%;
+    }
+
+    /* ─── Loading / skeleton ─── */
+    .notif-skeleton {
+      padding: 10px 18px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .notif-skeleton .sk-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+    }
+    .notif-skeleton .sk-lines {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 2px;
+    }
+    .notif-skeleton .sk-line {
+      height: 12px;
+      border-radius: 4px;
+    }
+    .notif-skeleton .sk-line-short { width: 55%; }
+    .notif-skeleton .sk-line-long  { width: 80%; }
+
+    /* ─── New notification slide-in ─── */
+    .notif-item.new {
+      animation: notif-slide-in .35s ease;
+    }
+    @keyframes notif-slide-in {
+      from { opacity: 0; transform: translateY(-20px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: 0; }
+      to   { opacity: 1; transform: translateY(0); max-height: 80px; }
+    }
+
+    /* ─── Empty state ─── */
+    .notif-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .notif-empty svg {
+      width: 44px;
+      height: 44px;
+      color: var(--text-muted);
+      opacity: .3;
+      margin-bottom: 12px;
+    }
+    .notif-empty p { font-size: 13px; color: var(--text-muted); }
+    .notif-empty .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; opacity: .7; }
+
+    /* ─── Error / retry ─── */
+    .notif-error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px;
+      text-align: center;
+    }
+    .notif-error p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+    .notif-retry-btn {
+      font-size: 12px;
+      font-weight: 550;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 6px 16px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .notif-retry-btn:hover { background: rgba(99,102,241,.2); }
+
+    /* ─── Loading more spinner ─── */
+    .notif-loading-more {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .notif-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: notif-spin .6s linear infinite;
+    }
+    @keyframes notif-spin { to { transform: rotate(360deg); } }
+
+    /* ─── Badge on bell (enhanced) ─── */
+    .notif-bell-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+    .notif-bell-badge {
+      position: absolute;
+      top: -2px;
+      right: -4px;
+      min-width: 18px;
+      height: 18px;
+      background: var(--error);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 0 5px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--bg);
+      pointer-events: none;
+      transform: scale(0);
+      transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+    }
+    .notif-bell-badge.show { transform: scale(1); }
+    .notif-bell-badge.pulse {
+      animation: badge-pulse .4s ease;
+    }
+    @keyframes badge-pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+
+    /* ─── Tooltip for "Mark read" ─── */
+    .notif-tooltip {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      right: 0;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .notif-mark-read-btn:hover .notif-tooltip { opacity: 1; }
+
+    /* ─── New notification toast (brief top-right toast) ─── */
+    .notif-toast {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 300;
+      max-width: 380px;
+      cursor: pointer;
+      animation: toast-in .3s ease, toast-out .3s ease 4s forwards;
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(40px); }
+    }
+    .notif-toast-icon {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .notif-toast-body { flex: 1; min-width: 0; }
+    .notif-toast-title { font-size: 12px; font-weight: 550; }
+    .notif-toast-msg { font-size: 11px; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    @media (max-width: 520px) {
+      .notif-panel { width: calc(100vw - 24px); right: -8px; }
+      .notif-toast { right: 12px; left: 12px; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     NOTIFICATION BELL BUTTON (replaces the existing .btn-ghost#notif-btn)
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="topbar-actions">
+  <button class="btn-ghost" id="notif-btn" title="Notifications">
+    <span class="notif-bell-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+      <span class="notif-bell-badge" id="notif-bell-badge">0</span>
+    </span>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     NOTIFICATION DROPDOWN PANEL
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="notif-overlay" id="notif-overlay">
+  <div class="notif-panel" id="notif-panel" style="position:fixed;top:58px;right:24px;">
+    <!-- Header -->
+    <div class="notif-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        Notifications
+      </h2>
+      <div class="notif-header-actions">
+        <button class="notif-mark-all-btn" id="notif-mark-all-btn" disabled>Mark all as read</button>
+        <button class="notif-close-btn" id="notif-close-btn" title="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="notif-tabs" id="notif-tabs">
+      <button class="notif-tab active" data-filter="all">All</button>
+      <button class="notif-tab" data-filter="unread">Unread</button>
+      <button class="notif-tab" data-filter="TASK_ASSIGNED">Assigned</button>
+      <button class="notif-tab" data-filter="MENTIONED_IN_COMMENT">Mentions</button>
+      <button class="notif-tab" data-filter="TASK_UPDATED">Updates</button>
+      <button class="notif-tab" data-filter="BOARD_INVITE">Invites</button>
+    </div>
+
+    <!-- Scrollable list -->
+    <div class="notif-scroll" id="notif-scroll">
+      <!-- Notifications rendered here -->
+      <div id="notif-list"></div>
+      <!-- Sentinel for infinite scroll -->
+      <div class="notif-sentinel" id="notif-sentinel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════════════ -->
+<script>
+/*
+ * ═══════════════════════════════════════════════════════════════════════
+ *  NOTIFICATION PANEL — Full JavaScript Implementation
+ *
+ *  Integration:
+ *    1. Copy this <script> block into your page (at end of <body>).
+ *    2. Copy the <style> block above into your page's <style>.
+ *    3. Copy/modify the bell button HTML and panel HTML.
+ *    4. Ensure the page has access to global `api()` helper and
+ *       `Stomp` / `SockJS` (already present in dashboard.html).
+ *    5. Set `window.CURRENT_USER_ID` from server-side data, or
+ *       the frontend gets it from /api/users/me.
+ *
+ *  WebSocket:
+ *    Subscribes to /topic/notifications/{userId} for real-time pushes.
+ *    Listens on the existing global /topic/notifications as fallback.
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
+/* ====================================================================
+ *  REQUIRED API ENDPOINTS (implement these on the backend)
+ * ====================================================================
+ *
+ * ── API 1: Paginated notification list ─────────────────────────────
+ *  GET /api/notifications?page=0&size=20&filter=unread
+ *
+ *  Query params:
+ *    page   (int, default 0)
+ *    size   (int, default 20)
+ *    filter (String, optional — "unread" | "TASK_ASSIGNED" |
+ *            "MENTIONED_IN_COMMENT" | "TASK_UPDATED" | "BOARD_INVITE")
+ *
+ *  What the backend does:
+ *    Queries NotificationRepository for the current authenticated user,
+ *    ordered by createdAt DESC. Optionally filters by read status or type.
+ *    Maps to NotificationResponse DTO.
+ *
+ *  Response (Spring Page<NotificationResponse>):
+ *    {
+ *      "content": [
+ *        {
+ *          "id": 1,
+ *          "type": "TASK_ASSIGNED",
+ *          "title": "Task assigned",
+ *          "message": "Jane assigned you to 'Design login page'",
+ *          "read": false,
+ *          "createdAt": "2026-06-14T10:30:00Z",
+ *          "actor": {
+ *            "id": 1,
+ *            "name": "Jane Doe",
+ *            "avatarUrl": "https://cdn.example.com/avatars/jane.jpg"
+ *          },
+ *          "taskId": 42,
+ *          "boardId": 7,
+ *          "workspaceId": 3
+ *        }
+ *      ],
+ *      "totalElements": 50,
+ *      "totalPages": 3,
+ *      "number": 0,
+ *      "size": 20,
+ *      "last": false,
+ *      "first": true,
+ *      "empty": false
+ *    }
+ *
+ * ── API 2: Mark single notification as read ────────────────────────
+ *  PUT /api/notifications/{id}/read
+ *
+ *  Path variable:
+ *    id (Long) — notification ID
+ *
+ *  What the backend does:
+ *    Sets notification.read = true for the given id.
+ *    Verifies the notification belongs to the current user.
+ *    Returns the updated notification.
+ *
+ *  Response:
+ *    { "id": 1, "read": true }
+ *
+ * ── API 3: Mark all notifications as read ──────────────────────────
+ *  PUT /api/notifications/read-all
+ *
+ *  Request body: none
+ *
+ *  What the backend does:
+ *    Sets read = true for ALL unread notifications belonging to
+ *    the current authenticated user.
+ *
+ *  Response:
+ *    { "message": "All notifications marked as read" }
+ *
+ * ── API 4: Unread notification count ───────────────────────────────
+ *  GET /api/notifications/count
+ *  (Already exists — no changes needed)
+ *
+ *  Response:
+ *    { "count": 3 }
+ *
+ * ── API 5: Get current user (for WebSocket topic) ──────────────────
+ *  GET /api/users/me
+ *
+ *  What the backend does:
+ *    Returns the currently authenticated user's profile.
+ *
+ *  Response:
+ *    { "id": 1, "name": "John Doe", "email": "john@example.com",
+ *      "avatarUrl": "https://..." }
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ *  NOTIFICATION ENTITY CHANGES NEEDED
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *  Add these fields to Notification.java:
+ *    - actor (ManyToOne User) — who triggered the notification
+ *    - taskId (Long, nullable) — related task ID
+ *    - boardId (Long, nullable) — related board ID
+ *    - workspaceId (Long, nullable) — related workspace ID
+ *
+ *  Add these values to NotificationType enum:
+ *    - MENTIONED_IN_COMMENT
+ *    - BOARD_INVITE
+ *
+ *  The type COMMENT_ADDED can be kept for backward compatibility
+ *  or renamed to MENTIONED_IN_COMMENT.
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ *  WEBSOCKET TOPIC
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *  Subscribe: /topic/notifications/{userId}
+ *
+ *  Backend sends via SimpMessagingTemplate when a new notification
+ *  is created for the user:
+ *
+ *    messagingTemplate.convertAndSend(
+ *      "/topic/notifications/" + notification.getReceiver().getId(),
+ *      payload
+ *    );
+ *
+ *  Payload:
+ *    {
+ *      "type": "new_notification",
+ *      "notification": { ... full NotificationResponse object ... },
+ *      "unreadCount": 4
+ *    }
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ *  REPOSITORY QUERIES NEEDED
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *  NotificationRepository.java — add these queries:
+ *
+ *    Page<Notification> findByReceiverOrderByCreatedAtDesc(User receiver, Pageable pageable);
+ *    Page<Notification> findByReceiverAndReadOrderByCreatedAtDesc(User receiver, boolean read, Pageable pageable);
+ *    Page<Notification> findByReceiverAndTypeOrderByCreatedAtDesc(User receiver, NotificationType type, Pageable pageable);
+ *    void updateAllByReceiverAndRead(User receiver, boolean read);  // @Modifying @Query
+ *    long countByReceiverAndRead(User receiver, boolean read);
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ *  NOTIFICATION CREATION (called from other services)
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *  NotificationService.createAndPush(
+ *    User receiver, User actor, NotificationType type,
+ *    String title, String message,
+ *    Long taskId, Long boardId, Long workspaceId
+ *  )
+ *
+ *  This method:
+ *    1. Creates and saves a new Notification entity
+ *    2. Sends the notification via WebSocket to /topic/notifications/{receiver.id}
+ *    3. Returns the saved notification
+ *
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+// ─── State ──────────────────────────────────────────────────────────
+const NOTIF_STATE = {
+  page: 0,
+  size: 20,
+  hasMore: true,
+  loading: false,
+  filter: 'all',
+  unreadCount: 0,
+  listEl: null,
+  sentinelEl: null,
+  scrollEl: null,
+  panelEl: null,
+  overlayEl: null,
+  observer: null,
+  userId: null,
+  wsTopic: null,
+};
+
+// ─── Init ───────────────────────────────────────────────────────────
+function initNotifications() {
+  NOTIF_STATE.listEl = document.getElementById('notif-list');
+  NOTIF_STATE.sentinelEl = document.getElementById('notif-sentinel');
+  NOTIF_STATE.scrollEl = document.getElementById('notif-scroll');
+  NOTIF_STATE.panelEl = document.getElementById('notif-panel');
+  NOTIF_STATE.overlayEl = document.getElementById('notif-overlay');
+
+  setupNotificationListeners();
+  setupInfiniteScroll();
+  setupFilterTabs();
+  setupWebSocketNotifications();
+  fetchUnreadCount();
+
+  // Load user ID for WS subscription
+  fetchCurrentUserId();
+}
+
+// ─── Get current user ──────────────────────────────────────────────
+async function fetchCurrentUserId() {
+  /* GET /api/users/me
+   * Response: { "id": 1, "name": "...", "avatarUrl": "..." }
+   */
+  try {
+    const res = await api('/api/users/me');
+    if (res.ok) {
+      NOTIF_STATE.userId = res.data.id;
+      NOTIF_STATE.wsTopic = `/topic/notifications/${NOTIF_STATE.userId}`;
+      subscribeToUserNotifications();
+    }
+  } catch (e) {
+    console.warn('[Notif] Could not fetch user:', e);
+  }
+}
+
+// ─── Fetch notifications ───────────────────────────────────────────
+async function fetchNotifications(page, filter, append = false) {
+  if (NOTIF_STATE.loading) return;
+  NOTIF_STATE.loading = true;
+
+  const listEl = NOTIF_STATE.listEl;
+
+  // Show skeleton on first load
+  if (!append) {
+    listEl.innerHTML = renderSkeletons(4);
+  }
+
+  const params = new URLSearchParams({
+    page: page,
+    size: NOTIF_STATE.size,
+  });
+  if (filter && filter !== 'all') params.set('filter', filter);
+
+  try {
+    /* GET /api/notifications?page=0&size=20&filter=unread
+     * Response: Page<NotificationResponse>
+     */
+    const res = await api(`/api/notifications?${params}`);
+
+    if (!res.ok) {
+      if (!append) listEl.innerHTML = renderError();
+      NOTIF_STATE.loading = false;
+      return;
+    }
+
+    const data = res.data;
+    const notifications = data.content || [];
+
+    NOTIF_STATE.hasMore = !data.last;
+    NOTIF_STATE.page = data.number || 0;
+
+    if (!append) {
+      if (notifications.length === 0) {
+        listEl.innerHTML = renderEmpty();
+        NOTIF_STATE.loading = false;
+        return;
+      }
+      listEl.innerHTML = renderGroupedNotifications(notifications);
+    } else {
+      if (notifications.length === 0) {
+        NOTIF_STATE.loading = false;
+        return;
+      }
+      appendNotifications(notifications);
+    }
+
+    // Update "Mark all as read" button
+    updateMarkAllBtn();
+
+    NOTIF_STATE.loading = false;
+  } catch (e) {
+    console.error('[Notif] Fetch error:', e);
+    if (!append) listEl.innerHTML = renderError();
+    NOTIF_STATE.loading = false;
+  }
+}
+
+// ─── Group notifications by date ───────────────────────────────────
+function groupByDate(notifications) {
+  const groups = {};
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+
+  notifications.forEach(n => {
+    const d = new Date(n.createdAt);
+    const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    let key;
+    if (dStart.getTime() === today.getTime()) key = 'Today';
+    else if (dStart.getTime() === yesterday.getTime()) key = 'Yesterday';
+    else if (dStart >= weekAgo) key = 'This Week';
+    else key = 'Earlier';
+
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  });
+
+  const order = ['Today', 'Yesterday', 'This Week', 'Earlier'];
+  const sorted = {};
+  order.forEach(k => { if (groups[k]) sorted[k] = groups[k]; });
+  return sorted;
+}
+
+// ─── Render grouped notifications ──────────────────────────────────
+function renderGroupedNotifications(notifications) {
+  const groups = groupByDate(notifications);
+  let html = '';
+  Object.entries(groups).forEach(([label, items]) => {
+    html += `<div class="notif-date-group">`;
+    html += `<div class="notif-date-label">${label}</div>`;
+    items.forEach(n => { html += renderNotifItem(n); });
+    html += `</div>`;
+  });
+  return html;
+}
+
+// ─── Render single notification item ────────────────────────────────
+function renderNotifItem(n) {
+  const typeClass = getTypeClass(n.type);
+  const iconSvg = getTypeIcon(n.type);
+  const unreadClass = n.read ? 'read' : 'unread';
+  const timeStr = timeAgo(n.createdAt);
+
+  return `
+    <div class="notif-item ${unreadClass}" data-id="${n.id}" data-type="${n.type}" data-read="${n.read}" data-task-id="${n.taskId || ''}" data-board-id="${n.boardId || ''}" data-workspace-id="${n.workspaceId || ''}">
+      <div class="notif-unread-dot"></div>
+      <div class="notif-type-icon ${typeClass}">${iconSvg}</div>
+      <div class="notif-content">
+        <div class="notif-title">${escapeHtml(n.title)}</div>
+        <div class="notif-message">${escapeHtml(n.message)}</div>
+        <div class="notif-meta">
+          ${n.actor ? `<img class="notif-actor-avatar" src="${escapeHtml(n.actor.avatarUrl || '')}" alt="${escapeHtml(n.actor.name)}" /><span class="notif-actor-name">${escapeHtml(n.actor.name)}</span>` : ''}
+          <span class="notif-time">${timeStr}</span>
+        </div>
+      </div>
+      <div class="notif-hover-actions">
+        ${!n.read ? `<button class="notif-mark-read-btn" data-id="${n.id}" title="Mark as read">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="notif-tooltip">Mark read</span>
+        </button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ─── Append notifications (infinite scroll) ────────────────────────
+function appendNotifications(notifications) {
+  const listEl = NOTIF_STATE.listEl;
+  // Remove loading-more if present
+  const loadingEl = listEl.querySelector('.notif-loading-more');
+  if (loadingEl) loadingEl.remove();
+
+  // Find the last date group or create a new one
+  const groups = groupByDate(notifications);
+  const existingGroups = listEl.querySelectorAll('.notif-date-group');
+  const existingLabels = new Set();
+  existingGroups.forEach(g => {
+    const label = g.querySelector('.notif-date-label');
+    if (label) existingLabels.add(label.textContent.trim());
+  });
+
+  const order = ['Today', 'Yesterday', 'This Week', 'Earlier'];
+  Object.entries(groups).forEach(([label, items]) => {
+    if (existingLabels.has(label)) {
+      // Append to existing group
+      const existingGroup = Array.from(existingGroups).find(g =>
+        g.querySelector('.notif-date-label')?.textContent.trim() === label
+      );
+      if (existingGroup) {
+        items.forEach(n => {
+          existingGroup.insertAdjacentHTML('beforeend', renderNotifItem(n));
+        });
+      }
+    } else {
+      // Create new group, insert after the last group or at the end
+      const groupHtml = `<div class="notif-date-group">
+        <div class="notif-date-label">${label}</div>
+        ${items.map(n => renderNotifItem(n)).join('')}
+      </div>`;
+      listEl.insertAdjacentHTML('beforeend', groupHtml);
+    }
+  });
+}
+
+// ─── Type helpers ──────────────────────────────────────────────────
+function getTypeClass(type) {
+  switch (type) {
+    case 'TASK_ASSIGNED': return 'task-assigned';
+    case 'MENTIONED_IN_COMMENT': return 'mentioned';
+    case 'TASK_UPDATED': return 'task-updated';
+    case 'BOARD_INVITE': return 'board-invite';
+    default: return 'task-assigned';
+  }
+}
+
+function getTypeIcon(type) {
+  switch (type) {
+    case 'TASK_ASSIGNED':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>`;
+    case 'MENTIONED_IN_COMMENT':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="10" r="1.5" fill="currentColor"/></svg>`;
+    case 'TASK_UPDATED':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    case 'BOARD_INVITE':
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="12" y1="5" x2="12" y2="19"/></svg>`;
+    default:
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+  }
+}
+
+// ─── Skeletons ────────────────────────────────────────────────────
+function renderSkeletons(count = 3) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    html += `
+      <div class="notif-skeleton">
+        <div class="sk-icon skeleton"></div>
+        <div class="sk-lines">
+          <div class="sk-line skeleton skeleton-h"></div>
+          <div class="sk-line skeleton skeleton-h sk-line-short"></div>
+          <div class="sk-line skeleton skeleton-h sk-line-long"></div>
+        </div>
+      </div>
+    `;
+  }
+  return html;
+}
+
+// ─── Empty state ───────────────────────────────────────────────────
+function renderEmpty() {
+  return `
+    <div class="notif-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+      <p>No notifications yet</p>
+      <div class="sub">We'll let you know when something arrives</div>
+    </div>
+  `;
+}
+
+// ─── Error state ───────────────────────────────────────────────────
+function renderError() {
+  return `
+    <div class="notif-error">
+      <p>Could not load notifications</p>
+      <button class="notif-retry-btn" onclick="retryLoadNotifications()">Try again</button>
+    </div>
+  `;
+}
+
+function retryLoadNotifications() {
+  NOTIF_STATE.page = 0;
+  NOTIF_STATE.hasMore = true;
+  fetchNotifications(0, NOTIF_STATE.filter);
+}
+
+// ─── Loading more indicator ────────────────────────────────────────
+function renderLoadingMore() {
+  return `
+    <div class="notif-loading-more">
+      <div class="notif-spinner"></div>
+      <span>Loading more...</span>
+    </div>
+  `;
+}
+
+// ─── Infinite scroll (IntersectionObserver) ─────────────────────────
+function setupInfiniteScroll() {
+  if (NOTIF_STATE.observer) NOTIF_STATE.observer.disconnect();
+
+  NOTIF_STATE.observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && NOTIF_STATE.hasMore && !NOTIF_STATE.loading) {
+        // Append loading indicator
+        const listEl = NOTIF_STATE.listEl;
+        listEl.insertAdjacentHTML('beforeend', renderLoadingMore());
+
+        const nextPage = NOTIF_STATE.page + 1;
+        fetchNotifications(nextPage, NOTIF_STATE.filter, true);
+      }
+    });
+  }, {
+    root: NOTIF_STATE.scrollEl,
+    rootMargin: '200px',
+  });
+
+  if (NOTIF_STATE.sentinelEl) {
+    NOTIF_STATE.observer.observe(NOTIF_STATE.sentinelEl);
+  }
+}
+
+// ─── Filter tabs ───────────────────────────────────────────────────
+function setupFilterTabs() {
+  const tabs = document.querySelectorAll('.notif-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      NOTIF_STATE.filter = tab.dataset.filter;
+      NOTIF_STATE.page = 0;
+      NOTIF_STATE.hasMore = true;
+      fetchNotifications(0, NOTIF_STATE.filter);
+    });
+  });
+}
+
+// ─── Mark as read (single) ─────────────────────────────────────────
+async function markAsRead(id, itemEl) {
+  try {
+    /* PUT /api/notifications/{id}/read
+     * Request: none
+     * Response: { "id": 1, "read": true }
+     */
+    const res = await api(`/api/notifications/${id}/read`, { method: 'PUT' });
+    if (!res.ok) return;
+
+    // Optimistic UI
+    itemEl.classList.remove('unread');
+    itemEl.classList.add('read');
+    itemEl.dataset.read = 'true';
+
+    // Remove hover mark-read button
+    const actions = itemEl.querySelector('.notif-hover-actions');
+    if (actions) actions.remove();
+
+    // Update badge count
+    NOTIF_STATE.unreadCount = Math.max(0, NOTIF_STATE.unreadCount - 1);
+    updateBadgeUI(NOTIF_STATE.unreadCount);
+    updateMarkAllBtn();
+
+    // Animate the dot
+    const dot = itemEl.querySelector('.notif-unread-dot');
+    if (dot) dot.style.opacity = '0';
+  } catch (e) {
+    console.error('[Notif] Mark read error:', e);
+  }
+}
+
+// ─── Mark all as read ──────────────────────────────────────────────
+async function markAllAsRead() {
+  const btn = document.getElementById('notif-mark-all-btn');
+  btn.disabled = true;
+  btn.textContent = 'Marking...';
+
+  try {
+    /* PUT /api/notifications/read-all
+     * Request: none
+     * Response: { "message": "All notifications marked as read" }
+     */
+    const res = await api('/api/notifications/read-all', { method: 'PUT' });
+    if (!res.ok) { btn.disabled = false; btn.textContent = 'Mark all as read'; return; }
+
+    // Update all visible items
+    document.querySelectorAll('.notif-item.unread').forEach(el => {
+      el.classList.remove('unread');
+      el.classList.add('read');
+      el.dataset.read = 'true';
+      const actions = el.querySelector('.notif-hover-actions');
+      if (actions) actions.remove();
+      const dot = el.querySelector('.notif-unread-dot');
+      if (dot) dot.style.opacity = '0';
+    });
+
+    NOTIF_STATE.unreadCount = 0;
+    updateBadgeUI(0);
+    btn.disabled = true;
+    btn.textContent = 'All read';
+  } catch (e) {
+    console.error('[Notif] Mark all error:', e);
+    btn.disabled = false;
+    btn.textContent = 'Mark all as read';
+  }
+}
+
+// ─── Update "Mark all" button ──────────────────────────────────────
+function updateMarkAllBtn() {
+  const btn = document.getElementById('notif-mark-all-btn');
+  const hasUnread = document.querySelector('.notif-item.unread');
+  btn.disabled = !hasUnread;
+  if (hasUnread) btn.textContent = 'Mark all as read';
+  else btn.textContent = 'All read';
+}
+
+// ─── Fetch unread count ────────────────────────────────────────────
+async function fetchUnreadCount() {
+  /* GET /api/notifications/count
+   * Response: { "count": 3 }
+   */
+  try {
+    const res = await api('/api/notifications/count');
+    if (res.ok) {
+      NOTIF_STATE.unreadCount = res.data.count || 0;
+      updateBadgeUI(NOTIF_STATE.unreadCount);
+    }
+  } catch (e) {}
+}
+
+// ─── Update badge UI ───────────────────────────────────────────────
+function updateBadgeUI(count) {
+  const badge = document.getElementById('notif-bell-badge');
+  if (!badge) return;
+
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+  }
+
+  // Also update sidebar badge (if present)
+  const sidebarBadge = document.getElementById('notif-badge');
+  if (sidebarBadge) {
+    if (count > 0) {
+      sidebarBadge.textContent = count;
+      sidebarBadge.style.display = 'block';
+    } else {
+      sidebarBadge.style.display = 'none';
+    }
+  }
+}
+
+// ─── Handle new notification from WS ───────────────────────────────
+function handleNewNotification(data) {
+  const notification = data.notification;
+  const unreadCount = data.unreadCount;
+
+  if (unreadCount != null) {
+    NOTIF_STATE.unreadCount = unreadCount;
+    updateBadgeUI(unreadCount);
+    updateMarkAllBtn();
+  }
+
+  // If panel is open and matches current filter, prepend
+  if (NOTIF_STATE.overlayEl?.classList.contains('open')) {
+    const filter = NOTIF_STATE.filter;
+    if (filter === 'all' || filter === 'unread' || filter === notification.type) {
+      prependNotification(notification);
+    }
+  }
+
+  // Show toast notification (if panel is closed)
+  if (!NOTIF_STATE.overlayEl?.classList.contains('open')) {
+    showToast(notification);
+  }
+
+  // Animate badge pulse
+  const badge = document.getElementById('notif-bell-badge');
+  if (badge) {
+    badge.classList.remove('pulse');
+    // Force reflow
+    void badge.offsetWidth;
+    badge.classList.add('pulse');
+  }
+}
+
+// ─── Prepend notification to list ──────────────────────────────────
+function prependNotification(notification) {
+  const listEl = NOTIF_STATE.listEl;
+  const groups = listEl.querySelectorAll('.notif-date-group');
+
+  // Remove empty state if present
+  const empty = listEl.querySelector('.notif-empty');
+  if (empty) empty.remove();
+
+  // Find or create "Today" group
+  let todayGroup = null;
+  groups.forEach(g => {
+    const label = g.querySelector('.notif-date-label');
+    if (label && label.textContent.trim() === 'Today') {
+      todayGroup = g;
+    }
+  });
+
+  const itemHtml = renderNotifItem(notification);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = itemHtml;
+  const newItem = wrapper.firstElementChild;
+  newItem.classList.add('new');
+
+  if (todayGroup) {
+    // Insert at top of Today group (after label)
+    const label = todayGroup.querySelector('.notif-date-label');
+    label.insertAdjacentElement('afterend', newItem);
+  } else {
+    // Create new Today group at top
+    const group = document.createElement('div');
+    group.className = 'notif-date-group';
+    group.innerHTML = `<div class="notif-date-label">Today</div>`;
+    group.appendChild(newItem);
+    listEl.insertBefore(group, listEl.firstChild);
+  }
+
+  // Remove any duplicate new animation class after animation
+  setTimeout(() => { newItem.classList.remove('new'); }, 400);
+
+  // Attach event listener for mark-read
+  attachItemEvents(newItem);
+}
+
+// ─── Show toast notification ───────────────────────────────────────
+function showToast(notification) {
+  // Remove existing toasts
+  document.querySelectorAll('.notif-toast').forEach(t => t.remove());
+
+  const typeClass = getTypeClass(notification.type);
+  const iconSvg = getTypeIcon(notification.type);
+
+  const toast = document.createElement('div');
+  toast.className = 'notif-toast';
+  toast.innerHTML = `
+    <div class="notif-toast-icon ${typeClass}">${iconSvg}</div>
+    <div class="notif-toast-body">
+      <div class="notif-toast-title">${escapeHtml(notification.title)}</div>
+      <div class="notif-toast-msg">${escapeHtml(notification.message)}</div>
+    </div>
+  `;
+  toast.addEventListener('click', () => {
+    toast.remove();
+    openNotificationPanel();
+    // If notification has task, navigate
+    if (notification.taskId) {
+      window.location.href = `/tasks/${notification.taskId}`;
+    }
+  });
+  document.body.appendChild(toast);
+
+  // Remove after animation
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 4500);
+}
+
+// ─── Attach click events to item ───────────────────────────────────
+function attachItemEvents(item) {
+  // Mark as read button
+  const markBtn = item.querySelector('.notif-mark-read-btn');
+  if (markBtn) {
+    markBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(markBtn.dataset.id);
+      markAsRead(id, item);
+    });
+  }
+
+  // Click on item → navigate
+  item.addEventListener('click', (e) => {
+    if (e.target.closest('.notif-mark-read-btn')) return;
+
+    // If unread, mark as read
+    if (item.dataset.read === 'false') {
+      const id = parseInt(item.dataset.id);
+      markAsRead(id, item);
+    }
+
+    // Navigate to task/board
+    const taskId = item.dataset.taskId;
+    const boardId = item.dataset.boardId;
+    if (taskId) {
+      window.location.href = `/tasks/${taskId}`;
+    } else if (boardId) {
+      window.location.href = `/boards/${boardId}`;
+    }
+  });
+}
+
+// ─── Panel open/close ──────────────────────────────────────────────
+function openNotificationPanel() {
+  NOTIF_STATE.overlayEl.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Reset and load
+  NOTIF_STATE.page = 0;
+  NOTIF_STATE.hasMore = true;
+  fetchNotifications(0, NOTIF_STATE.filter);
+}
+
+function closeNotificationPanel() {
+  NOTIF_STATE.overlayEl.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function toggleNotificationPanel() {
+  if (NOTIF_STATE.overlayEl.classList.contains('open')) {
+    closeNotificationPanel();
+  } else {
+    openNotificationPanel();
+  }
+}
+
+// ─── Setup event listeners ─────────────────────────────────────────
+function setupNotificationListeners() {
+  // Bell button
+  const bellBtn = document.getElementById('notif-btn');
+  if (bellBtn) {
+    bellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleNotificationPanel();
+    });
+  }
+
+  // Close button
+  const closeBtn = document.getElementById('notif-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeNotificationPanel);
+  }
+
+  // Overlay click (click outside panel)
+  NOTIF_STATE.overlayEl.addEventListener('click', (e) => {
+    if (e.target === NOTIF_STATE.overlayEl) {
+      closeNotificationPanel();
+    }
+  });
+
+  // Mark all as read
+  const markAllBtn = document.getElementById('notif-mark-all-btn');
+  if (markAllBtn) {
+    markAllBtn.addEventListener('click', markAllAsRead);
+  }
+
+  // Keyboard: ESC to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && NOTIF_STATE.overlayEl?.classList.contains('open')) {
+      closeNotificationPanel();
+    }
+  });
+
+  // Re-attach item events on scroll (for dynamically loaded items)
+  NOTIF_STATE.scrollEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.notif-item');
+    if (item) {
+      // Click is handled by attachItemEvents, but we need to handle
+      // mark-read buttons that may not have been attached
+      const markBtn = e.target.closest('.notif-mark-read-btn');
+      if (markBtn) {
+        e.stopPropagation();
+        const id = parseInt(markBtn.dataset.id);
+        markAsRead(id, item);
+        return;
+      }
+
+      // If unread, mark as read
+      if (item.dataset.read === 'false') {
+        const id = parseInt(item.dataset.id);
+        markAsRead(id, item);
+      }
+
+      // Navigate
+      const taskId = item.dataset.taskId;
+      const boardId = item.dataset.boardId;
+      if (taskId) {
+        window.location.href = `/tasks/${taskId}`;
+      } else if (boardId) {
+        window.location.href = `/boards/${boardId}`;
+      }
+    }
+  });
+}
+
+// ─── WebSocket subscription ────────────────────────────────────────
+function setupWebSocketNotifications() {
+  // This relies on the global stompClient set up in the dashboard
+  // If the dashboard WS connection already subscribes to /topic/notifications,
+  // we handle it here. The user-specific topic is set up once we have userId.
+
+  // Also listen on the global topic as fallback
+  if (typeof stompClient !== 'undefined' && stompClient) {
+    subscribeToGlobalNotifications();
+  } else {
+    // Wait for WS to be available
+    const checkWs = setInterval(() => {
+      if (typeof stompClient !== 'undefined' && stompClient && stompClient.connected) {
+        subscribeToGlobalNotifications();
+        clearInterval(checkWs);
+      }
+    }, 500);
+    // Stop checking after 10s
+    setTimeout(() => clearInterval(checkWs), 10000);
+  }
+}
+
+function subscribeToGlobalNotifications() {
+  try {
+    if (stompClient && stompClient.connected) {
+      stompClient.subscribe('/topic/notifications', (msg) => {
+        try {
+          const data = JSON.parse(msg.body);
+          if (data.type === 'new_notification' || data.notification) {
+            handleNewNotification(data);
+          } else if (data.count != null) {
+            updateBadgeUI(data.count);
+          }
+        } catch (e) {}
+      });
+    }
+  } catch (e) {}
+}
+
+function subscribeToUserNotifications() {
+  if (!NOTIF_STATE.wsTopic || !stompClient || !stompClient.connected) return;
+  try {
+    stompClient.subscribe(NOTIF_STATE.wsTopic, (msg) => {
+      try {
+        const data = JSON.parse(msg.body);
+        if (data.type === 'new_notification' || data.notification) {
+          handleNewNotification(data);
+        }
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
+// ─── Utilities ─────────────────────────────────────────────────────
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d`;
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ─── Bootstrap ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', initNotifications);
+</script>
+
+<!-- SockJS + STOMP (already included in dashboard.html, but needed here for standalone) -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+</body>
+</html>

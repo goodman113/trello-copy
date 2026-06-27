@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:attr="data-user-id=${userId}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -822,6 +822,213 @@
     .skeleton-h-80 { height: 80px; }
     .skeleton-h-40 { height: 40px; }
     .skeleton-round { border-radius: 50%; }
+
+    /* ══════════════════════════════════════════════════════════════
+       NOTIFICATION PANEL STYLES
+       ══════════════════════════════════════════════════════════════ */
+    .notif-overlay {
+      position: fixed; inset: 0; background: transparent; z-index: 150; display: none;
+    }
+    .notif-overlay.open { display: block; }
+
+    .notif-panel {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: 430px; max-height: 620px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 16px 56px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.2);
+      display: flex; flex-direction: column; overflow: hidden;
+      animation: notif-in .2s ease; transform-origin: top right;
+    }
+    @keyframes notif-in {
+      from { opacity: 0; transform: translateY(-8px) scale(.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .notif-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .notif-header h2 {
+      font-size: 16px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .notif-header h2 svg { width: 20px; height: 20px; color: var(--accent); }
+    .notif-header-actions { display: flex; align-items: center; gap: 6px; }
+    .notif-mark-all-btn {
+      font-size: 12px; font-weight: 550; color: var(--accent);
+      background: none; border: none; font-family: inherit; cursor: pointer;
+      padding: 4px 10px; border-radius: var(--radius-sm);
+      transition: background .15s; white-space: nowrap;
+    }
+    .notif-mark-all-btn:hover { background: var(--accent-dim); }
+    .notif-mark-all-btn:disabled { opacity: .4; cursor: default; }
+    .notif-mark-all-btn:disabled:hover { background: none; }
+    .notif-close-btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: var(--radius-sm);
+      color: var(--text-secondary); cursor: pointer; transition: background .15s, color .15s;
+    }
+    .notif-close-btn:hover { background: var(--surface-hover); color: var(--text); }
+    .notif-close-btn svg { width: 18px; height: 18px; }
+    .notif-tabs {
+      display: flex; gap: 4px; padding: 10px 18px 0; flex-shrink: 0; overflow-x: auto;
+    }
+    .notif-tabs::-webkit-scrollbar { height: 0; }
+    .notif-tab {
+      font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 14px;
+      background: transparent; border: none; color: var(--text-secondary);
+      font-family: inherit; cursor: pointer;
+      transition: background .15s, color .15s; white-space: nowrap;
+    }
+    .notif-tab:hover { color: var(--text); background: var(--surface-hover); }
+    .notif-tab.active { background: var(--accent-dim); color: var(--accent); font-weight: 550; }
+    .notif-scroll { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .notif-scroll::-webkit-scrollbar { width: 4px; }
+    .notif-scroll::-webkit-scrollbar-track { background: transparent; }
+    .notif-scroll::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+    .notif-date-group { padding: 0 0 4px; }
+    .notif-date-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); padding: 12px 18px 6px;
+      position: sticky; top: 0; background: var(--surface); z-index: 1;
+    }
+    .notif-item {
+      display: flex; gap: 12px; padding: 10px 18px; cursor: pointer;
+      transition: background .15s; position: relative;
+    }
+    .notif-item:hover { background: var(--surface-hover); }
+    .notif-item.unread { background: rgba(99,102,241,.04); }
+    .notif-item.unread:hover { background: rgba(99,102,241,.08); }
+    .notif-item.removing { opacity: 0; transform: translateX(20px); transition: all .3s ease; }
+    .notif-unread-dot {
+      width: 8px; height: 8px; min-width: 8px; border-radius: 50%;
+      background: var(--accent); margin-top: 6px; transition: opacity .3s;
+    }
+    .notif-item.read .notif-unread-dot { opacity: 0; }
+    .notif-type-icon {
+      width: 34px; height: 34px; min-width: 34px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .notif-type-icon svg { width: 16px; height: 16px; }
+    .notif-type-icon.task-assigned    { background: rgba(96,165,250,.15); color: #60a5fa; }
+    .notif-type-icon.mentioned       { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .notif-type-icon.task-updated    { background: rgba(99,102,241,.15); color: #818cf8; }
+    .notif-type-icon.board-invite    { background: rgba(52,211,153,.15); color: #34d399; }
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-title {
+      font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .notif-item.read .notif-title { color: var(--text-secondary); }
+    .notif-message {
+      font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .notif-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .notif-actor-avatar {
+      width: 16px; height: 16px; min-width: 16px; border-radius: 50%;
+      object-fit: cover; background: var(--surface-hover);
+    }
+    .notif-actor-name { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+    .notif-time { font-size: 11px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+    .notif-hover-actions {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      display: none; align-items: center; gap: 4px;
+      background: var(--surface-hover); padding: 2px; border-radius: var(--radius-sm);
+    }
+    .notif-item:hover .notif-hover-actions { display: flex; }
+    .notif-mark-read-btn {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: 4px; color: var(--text-muted);
+      cursor: pointer; transition: color .15s, background .15s;
+    }
+    .notif-mark-read-btn:hover { color: var(--accent); background: var(--accent-dim); }
+    .notif-mark-read-btn svg { width: 15px; height: 15px; }
+    .notif-sentinel { height: 1px; width: 100%; }
+    .notif-skeleton { padding: 10px 18px; display: flex; gap: 12px; align-items: flex-start; }
+    .notif-skeleton .sk-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); }
+    .notif-skeleton .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+    .notif-skeleton .sk-line { height: 12px; border-radius: 4px; }
+    .notif-skeleton .sk-line-short { width: 55%; }
+    .notif-skeleton .sk-line-long { width: 80%; }
+    .notif-item.new { animation: notif-slide-in .35s ease; }
+    @keyframes notif-slide-in {
+      from { opacity: 0; transform: translateY(-20px); max-height: 0; padding-top: 0; padding-bottom: 0; }
+      to   { opacity: 1; transform: translateY(0); max-height: 80px; }
+    }
+    .notif-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 20px; text-align: center;
+    }
+    .notif-empty svg { width: 44px; height: 44px; color: var(--text-muted); opacity: .3; margin-bottom: 12px; }
+    .notif-empty p { font-size: 13px; color: var(--text-muted); }
+    .notif-empty .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; opacity: .7; }
+    .notif-error { display: flex; flex-direction: column; align-items: center; padding: 32px 20px; text-align: center; }
+    .notif-error p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+    .notif-retry-btn {
+      font-size: 12px; font-weight: 550; color: var(--accent); background: var(--accent-dim);
+      border: none; border-radius: var(--radius-sm); padding: 6px 16px; font-family: inherit;
+      cursor: pointer; transition: background .15s;
+    }
+    .notif-retry-btn:hover { background: rgba(99,102,241,.2); }
+    .notif-loading-more {
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px; gap: 8px; font-size: 12px; color: var(--text-muted);
+    }
+    .notif-spinner {
+      width: 18px; height: 18px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%; animation: notif-spin .6s linear infinite;
+    }
+    @keyframes notif-spin { to { transform: rotate(360deg); } }
+    .notif-bell-wrap { position: relative; display: inline-flex; }
+    .notif-bell-badge {
+      position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px;
+      background: var(--error); color: #fff; font-size: 10px; font-weight: 700;
+      padding: 0 5px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--bg); pointer-events: none;
+      transform: scale(0); transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+    }
+    .notif-bell-badge.show { transform: scale(1); }
+    .notif-bell-badge.pulse { animation: badge-pulse .4s ease; }
+    @keyframes badge-pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .notif-tooltip {
+      position: absolute; bottom: calc(100% + 4px); right: 0;
+      background: var(--surface-elevated); border: 1px solid var(--border);
+      color: var(--text); font-size: 11px; padding: 3px 8px; border-radius: 4px;
+      white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .15s;
+    }
+    .notif-mark-read-btn:hover .notif-tooltip { opacity: 1; }
+    .notif-toast {
+      position: fixed; top: 16px; right: 16px; background: var(--surface-elevated);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px 16px; box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      display: flex; align-items: center; gap: 10px; z-index: 300;
+      max-width: 380px; cursor: pointer;
+      animation: toast-in .3s ease, toast-out .3s ease 4s forwards;
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(40px); }
+    }
+    .notif-toast-icon {
+      width: 28px; height: 28px; min-width: 28px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .notif-toast-body { flex: 1; min-width: 0; }
+    .notif-toast-title { font-size: 12px; font-weight: 550; }
+    .notif-toast-msg { font-size: 11px; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    @media (max-width: 520px) {
+      .notif-panel { width: calc(100vw - 24px); right: -8px; }
+      .notif-toast { right: 12px; left: 12px; max-width: none; }
+    }
   </style>
 </head>
 <body>
@@ -893,7 +1100,10 @@
     </div>
     <div class="topbar-actions">
       <button class="btn-ghost" id="notif-btn" title="Notifications">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-bell-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="notif-bell-badge" id="notif-bell-badge">0</span>
+        </span>
       </button>
       <button class="btn-primary" id="create-board-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -901,6 +1111,36 @@
       </button>
     </div>
   </header>
+
+  <!-- ─── Notification Dropdown Panel ─── -->
+  <div class="notif-overlay" id="notif-overlay">
+    <div class="notif-panel" id="notif-panel" style="position:fixed;top:58px;right:24px;">
+      <div class="notif-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+        </h2>
+        <div class="notif-header-actions">
+          <button class="notif-mark-all-btn" id="notif-mark-all-btn" disabled>Mark all as read</button>
+          <button class="notif-close-btn" id="notif-close-btn" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="notif-tabs" id="notif-tabs">
+        <button class="notif-tab active" data-filter="all">All</button>
+        <button class="notif-tab" data-filter="unread">Unread</button>
+        <button class="notif-tab" data-filter="TASK_ASSIGNED">Assigned</button>
+        <button class="notif-tab" data-filter="MENTIONED_IN_COMMENT">Mentions</button>
+        <button class="notif-tab" data-filter="TASK_UPDATED">Updates</button>
+        <button class="notif-tab" data-filter="BOARD_INVITE">Invites</button>
+      </div>
+      <div class="notif-scroll" id="notif-scroll">
+        <div id="notif-list"></div>
+        <div class="notif-sentinel" id="notif-sentinel"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Dashboard content -->
   <div class="dashboard">
@@ -1229,7 +1469,8 @@
    *   "tasks": [
    *     { "id": "uuid", "title": "Design login page", "status": "in_progress",
    *       "priority": "high", "assignee": { "id": "uuid", "name": "Jane", "avatarUrl": "" },
-   *       "dueDate": "2026-06-01T00:00:00Z", "boardId": "uuid", "boardName": "Sprint 24" }
+   *       "dueDate": "2026-06-01T00:00:00Z",
+   *       "boardColumnId": "uuid", "boardColumnName": "In Progress" }
    *   ]
    * }
    *
@@ -1239,7 +1480,7 @@
    *
    * POST /api/tasks
    * Request:  { "title": "...", "description": "...", "status": "todo", "priority": "medium",
-   *             "assigneeId": "uuid", "dueDate": "...", "boardId": "uuid", "workspaceId": "uuid" }
+   *             "assigneeId": "uuid", "dueDate": "...", "boardColumnId": "uuid" }
    * Response: { "id": "uuid", "title": "...", "status": "todo", ... }
    *
    * DELETE /api/tasks/:id
@@ -1464,15 +1705,29 @@
    */
 
   async function loadNotificationCount() {
-    const badge = document.getElementById('notif-badge');
     const res = await api('/api/notifications/count');
     if (!res.ok) return;
-    const count = res.data.count || 0;
-    if (count > 0) {
-      badge.textContent = count;
-      badge.style.display = 'block';
-    } else {
-      badge.style.display = 'none';
+    updateNotifBadge(res.data.count || 0);
+  }
+
+  function updateNotifBadge(count) {
+    const bellBadge = document.getElementById('notif-bell-badge');
+    const sidebarBadge = document.getElementById('notif-badge');
+    if (bellBadge) {
+      if (count > 0) {
+        bellBadge.textContent = count > 99 ? '99+' : count;
+        bellBadge.classList.add('show');
+      } else {
+        bellBadge.classList.remove('show');
+      }
+    }
+    if (sidebarBadge) {
+      if (count > 0) {
+        sidebarBadge.textContent = count;
+        sidebarBadge.style.display = 'block';
+      } else {
+        sidebarBadge.style.display = 'none';
+      }
     }
   }
 
@@ -1482,7 +1737,8 @@
    * GET /api/search?q=:query&workspaceId=:id
    * Response: {
    *   "boards": [ { "id": "uuid", "title": "Sprint 24", "color": "#6366f1" } ],
-   *   "tasks": [ { "id": "uuid", "title": "Design login", "status": "in_progress", "boardName": "..." } ],
+   *   "tasks": [ { "id": "uuid", "title": "Design login", "status": "in_progress",
+   *               "boardColumnName": "In Progress", "boardId": "uuid" } ],
    *   "members": [ { "id": "uuid", "name": "Jane", "avatarUrl": "..." } ]
    * }
    */
@@ -1516,7 +1772,10 @@
       if (data.tasks?.length) {
         html += '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:4px 8px;margin-top:4px">Tasks</div>';
         data.tasks.forEach(t => {
-          html += `<div class="nav-item" style="cursor:pointer" data-href="/boards/${t.boardId}"><span>${t.title}</span></div>`;
+          html += `<div class="nav-item" style="cursor:pointer" data-href="/boards/${t.boardId}">
+            <span>${t.title}</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${t.boardColumnName || ''}</span>
+          </div>`;
         });
       }
 
@@ -1624,18 +1883,578 @@
     caret.classList.toggle('open');
   });
 
+  // ─── WebSocket ────────────────────────────────────────────────────
+
+  let stompClient = null;
+  let wsReconnectTimer = null;
+
+  function connectWebSocket() {
+    /*
+     * WebSocket connection via STOMP + SockJS.
+     *
+     * Endpoint: /ws  (configured in WebSocketConfig.java)
+     * Broker:   /topic
+     *
+     * Subscriptions:
+     *   /topic/presence    — user online/offline events
+     *   /topic/activity    — new activity feed items
+     *   /topic/notifications — notification badge count updates
+     *   /topic/tasks       — task created/updated/deleted
+     *
+     * Presence payload (/topic/presence):
+     * {
+     *   "type": "user_online" | "user_offline" | "user_status",
+     *   "user": { "id": "uuid", "name": "Jane", "avatarUrl": "...", "status": "online" },
+     *   "onlineCount": 5
+     * }
+     *
+     * Activity payload (/topic/activity):
+     * {
+     *   "id": "uuid",
+     *   "type": "task_created",
+     *   "message": "Jane created 'Design login page'",
+     *   "user": { "id": "uuid", "name": "Jane", "avatarUrl": "..." },
+     *   "timestamp": "2026-05-20T10:30:00Z"
+     * }
+     *
+     * Notification payload (/topic/notifications):
+     * {
+     *   "type": "new_notification",
+     *   "count": 4,
+     *   "notification": { "id": "uuid", "message": "...", "read": false }
+     * }
+     *
+     * Task payload (/topic/tasks):
+     * {
+     *   "type": "task_updated" | "task_created" | "task_deleted",
+     *   "task": { "id": "uuid", "title": "...", "status": "in_progress", ... }
+     * }
+     */
+
+    if (stompClient && stompClient.connected) return;
+
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+
+    // Disable debug logging in production
+    stompClient.debug = () => {};
+
+    stompClient.connect({}, (frame) => {
+      console.log('[WS] Connected:', frame);
+
+      // Presence
+      stompClient.subscribe('/topic/presence', (msg) => {
+        try {
+          const data = JSON.parse(msg.body);
+          if (data.type === 'user_online' && data.user) {
+            addOnlineUser(data.user, data.onlineCount);
+          } else if (data.type === 'user_offline' && data.user) {
+            removeOnlineUser(data.user.id, data.onlineCount);
+          } else {
+            loadOnlineUsers();
+          }
+        } catch (e) { loadOnlineUsers(); }
+      });
+
+      // Activity
+      stompClient.subscribe('/topic/activity', (msg) => {
+        try {
+          const data = JSON.parse(msg.body);
+          prependActivity(data);
+        } catch (e) { loadActivity(); }
+      });
+
+      // Notifications
+      stompClient.subscribe('/topic/notifications', (msg) => {
+        try {
+          const data = JSON.parse(msg.body);
+          if (data.type === 'new_notification' && data.notification) {
+            // New full notification object
+            updateNotifBadge(data.unreadCount || 0);
+            if (window.handleNewNotification) {
+              window.handleNewNotification(data);
+            }
+          } else if (data.count != null) {
+            updateNotifBadge(data.count);
+          } else {
+            loadNotificationCount();
+          }
+        } catch (e) { loadNotificationCount(); }
+      });
+
+      // User-specific notification topic (for real-time pushes)
+      const userIdEl = document.querySelector('[data-user-id]');
+      const userId = userIdEl ? userIdEl.dataset.userId : null;
+      if (userId) {
+        stompClient.subscribe(`/topic/notifications/${userId}`, (msg) => {
+          try {
+            const data = JSON.parse(msg.body);
+            if (data.type === 'new_notification' && data.notification) {
+              updateNotifBadge(data.unreadCount || 0);
+              if (window.handleNewNotification) {
+                window.handleNewNotification(data);
+              }
+            }
+          } catch (e) {}
+        });
+      }
+
+      // Tasks
+      stompClient.subscribe('/topic/tasks', (msg) => {
+        try {
+          const data = JSON.parse(msg.body);
+          if (data.type === 'task_updated' || data.type === 'task_created') {
+            loadTasks();
+            loadDeadlines();
+          } else if (data.type === 'task_deleted') {
+            loadTasks();
+            loadDeadlines();
+            loadBoards(); // refresh task counts
+          }
+        } catch (e) { loadTasks(); }
+      });
+
+    }, (error) => {
+      console.warn('[WS] Connection failed, retrying in 5s:', error);
+      wsReconnectTimer = setTimeout(connectWebSocket, 5000);
+    });
+  }
+
+  function disconnectWebSocket() {
+    clearTimeout(wsReconnectTimer);
+    if (stompClient) {
+      try { stompClient.disconnect(); } catch (e) {}
+      stompClient = null;
+    }
+  }
+
+  // ─── WS UI helpers ────────────────────────────────────────────────
+
+  function addOnlineUser(user, totalCount) {
+    const list = document.getElementById('online-list');
+    const count = document.getElementById('online-count');
+
+    // Remove empty state if present
+    const empty = list.querySelector('.empty-state');
+    if (empty) list.innerHTML = '';
+
+    // Don't add duplicates
+    if (list.querySelector(`[data-user-id="${user.id}"]`)) return;
+
+    const el = document.createElement('div');
+    el.className = 'online-user';
+    el.dataset.userId = user.id;
+    el.innerHTML = `
+      <img src="${user.avatarUrl || ''}" alt="${user.name}" />
+      <span class="name">${user.name}</span>
+      <span class="online-dot" style="background:${user.status === 'dnd' ? 'var(--error)' : user.status === 'idle' ? 'var(--warning)' : 'var(--success)'}"></span>
+    `;
+    el.title = `${user.name} — ${user.status || 'online'}`;
+    list.appendChild(el);
+    if (totalCount != null) count.textContent = totalCount;
+    else count.textContent = list.querySelectorAll('.online-user').length;
+  }
+
+  function removeOnlineUser(userId, totalCount) {
+    const list = document.getElementById('online-list');
+    const count = document.getElementById('online-count');
+    const el = list.querySelector(`[data-user-id="${userId}"]`);
+    if (el) el.remove();
+
+    if (totalCount != null) count.textContent = totalCount;
+    else count.textContent = list.querySelectorAll('.online-user').length;
+
+    if (list.querySelectorAll('.online-user').length === 0) {
+      list.innerHTML = '<div class="empty-state" style="padding:16px 0"><p>No one online right now.</p></div>';
+    }
+  }
+
+  function prependActivity(activity) {
+    const list = document.getElementById('activity-list');
+    const empty = list.querySelector('.empty-state');
+    if (empty) list.innerHTML = '';
+
+    const item = document.createElement('div');
+    item.className = 'activity-item';
+    item.style.opacity = '0.6';
+    item.innerHTML = `
+      <img class="activity-avatar" src="${activity.user?.avatarUrl || ''}" alt="${activity.user?.name || 'User'}" />
+      <div class="activity-body">
+        <div class="activity-text">${activity.message || activity.type}</div>
+        <div class="activity-time">${timeAgo(activity.timestamp) || 'Just now'}</div>
+      </div>
+    `;
+    list.prepend(item);
+    requestAnimationFrame(() => { item.style.opacity = '1'; item.style.transition = 'opacity .4s'; });
+
+    // Keep max 5 items
+    while (list.children.length > 5) list.lastChild.remove();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+   *  NOTIFICATION PANEL — Dropdown logic
+   * ═══════════════════════════════════════════════════════════════════ */
+
+  const NOTIF_STATE = {
+    page: 0, size: 20, hasMore: true, loading: false, filter: 'all',
+    unreadCount: 0, observer: null,
+  };
+
+  function initNotifPanel() {
+    NOTIF_STATE.listEl = document.getElementById('notif-list');
+    NOTIF_STATE.sentinelEl = document.getElementById('notif-sentinel');
+    NOTIF_STATE.scrollEl = document.getElementById('notif-scroll');
+    NOTIF_STATE.overlayEl = document.getElementById('notif-overlay');
+
+    setupNotifListeners();
+    setupNotifInfiniteScroll();
+    setupNotifTabs();
+  }
+
+  // ─── Fetch ──────────────────────────────────────────────────────
+  async function fetchNotifications(page, filter, append) {
+    if (NOTIF_STATE.loading) return;
+    NOTIF_STATE.loading = true;
+    const listEl = NOTIF_STATE.listEl;
+
+    if (!append) listEl.innerHTML = renderNotifSkeletons(4);
+
+    const params = new URLSearchParams({ page, size: NOTIF_STATE.size });
+    if (filter && filter !== 'all') params.set('filter', filter);
+
+    try {
+      const res = await api(`/api/notifications?${params}`);
+      if (!res.ok) { if (!append) listEl.innerHTML = renderNotifError(); NOTIF_STATE.loading = false; return; }
+
+      const data = res.data;
+      const notifications = data.content || [];
+      NOTIF_STATE.hasMore = !data.last;
+      NOTIF_STATE.page = data.number || 0;
+
+      if (!append) {
+        if (!notifications.length) { listEl.innerHTML = renderNotifEmpty(); NOTIF_STATE.loading = false; return; }
+        listEl.innerHTML = groupAndRender(notifications);
+      } else {
+        const loadMore = listEl.querySelector('.notif-loading-more');
+        if (loadMore) loadMore.remove();
+        if (!notifications.length) { NOTIF_STATE.loading = false; return; }
+        appendNotifGroups(notifications);
+      }
+      updateNotifMarkAllBtn();
+      NOTIF_STATE.loading = false;
+    } catch (e) {
+      if (!append) listEl.innerHTML = renderNotifError();
+      NOTIF_STATE.loading = false;
+    }
+  }
+
+  function groupAndRender(notifications) {
+    const groups = groupNotifsByDate(notifications);
+    let html = '';
+    Object.entries(groups).forEach(([label, items]) => {
+      html += `<div class="notif-date-group"><div class="notif-date-label">${label}</div>`;
+      items.forEach(n => { html += renderNotifItem(n); });
+      html += `</div>`;
+    });
+    return html;
+  }
+
+  function groupNotifsByDate(notifications) {
+    const groups = {};
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const weekAgo = new Date(today.getTime() - 7 * 86400000);
+    const order = ['Today', 'Yesterday', 'This Week', 'Earlier'];
+
+    notifications.forEach(n => {
+      const d = new Date(n.createdAt);
+      const ds = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      let key = 'Earlier';
+      if (ds.getTime() === today.getTime()) key = 'Today';
+      else if (ds.getTime() === yesterday.getTime()) key = 'Yesterday';
+      else if (ds >= weekAgo) key = 'This Week';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(n);
+    });
+
+    const sorted = {};
+    order.forEach(k => { if (groups[k]) sorted[k] = groups[k]; });
+    return sorted;
+  }
+
+  function renderNotifItem(n) {
+    const tc = ({ TASK_ASSIGNED:'task-assigned', MENTIONED_IN_COMMENT:'mentioned', TASK_UPDATED:'task-updated', BOARD_INVITE:'board-invite' })[n.type] || 'task-assigned';
+    const icon = getNotifIcon(n.type);
+    const uc = n.read ? 'read' : 'unread';
+    return `
+      <div class="notif-item ${uc}" data-id="${n.id}" data-type="${n.type}" data-read="${n.read}" data-task-id="${n.taskId||''}" data-board-id="${n.boardId||''}">
+        <div class="notif-unread-dot"></div>
+        <div class="notif-type-icon ${tc}">${icon}</div>
+        <div class="notif-content">
+          <div class="notif-title">${escHtml(n.title)}</div>
+          <div class="notif-message">${escHtml(n.message)}</div>
+          <div class="notif-meta">
+            ${n.actor ? `<img class="notif-actor-avatar" src="${escHtml(n.actor.avatarUrl||'')}" alt="${escHtml(n.actor.name)}" /><span class="notif-actor-name">${escHtml(n.actor.name)}</span>` : ''}
+            <span class="notif-time">${notifTimeAgo(n.createdAt)}</span>
+          </div>
+        </div>
+        ${!n.read ? `<div class="notif-hover-actions"><button class="notif-mark-read-btn" data-id="${n.id}" title="Mark as read"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg><span class="notif-tooltip">Mark read</span></button></div>` : ''}
+      </div>`;
+  }
+
+  function appendNotifGroups(notifications) {
+    const listEl = NOTIF_STATE.listEl;
+    const groups = groupNotifsByDate(notifications);
+    const existingLabels = new Set();
+    listEl.querySelectorAll('.notif-date-label').forEach(el => existingLabels.add(el.textContent.trim()));
+
+    Object.entries(groups).forEach(([label, items]) => {
+      if (existingLabels.has(label)) {
+        const group = Array.from(listEl.querySelectorAll('.notif-date-group')).find(g =>
+          g.querySelector('.notif-date-label')?.textContent.trim() === label);
+        if (group) items.forEach(n => group.insertAdjacentHTML('beforeend', renderNotifItem(n)));
+      } else {
+        listEl.insertAdjacentHTML('beforeend', `<div class="notif-date-group"><div class="notif-date-label">${label}</div>${items.map(n => renderNotifItem(n)).join('')}</div>`);
+      }
+    });
+  }
+
+  function getNotifIcon(type) {
+    switch (type) {
+      case 'TASK_ASSIGNED': return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>';
+      case 'MENTIONED_IN_COMMENT': return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="10" r="1.5" fill="currentColor"/></svg>';
+      case 'TASK_UPDATED': return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+      case 'BOARD_INVITE': return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="12" y1="5" x2="12" y2="19"/></svg>';
+      default: return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+    }
+  }
+
+  function renderNotifSkeletons(n) {
+    let h = '';
+    for (let i = 0; i < n; i++) h += `<div class="notif-skeleton"><div class="sk-icon skeleton"></div><div class="sk-lines"><div class="sk-line skeleton skeleton-h"></div><div class="sk-line skeleton skeleton-h sk-line-short"></div><div class="sk-line skeleton skeleton-h sk-line-long"></div></div></div>`;
+    return h;
+  }
+
+  function renderNotifEmpty() {
+    return '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>No notifications yet</p><div class="sub">We\'ll let you know when something arrives</div></div>';
+  }
+
+  function renderNotifError() {
+    return '<div class="notif-error"><p>Could not load notifications</p><button class="notif-retry-btn" onclick="retryNotifLoad()">Try again</button></div>';
+  }
+
+  window.retryNotifLoad = function() {
+    NOTIF_STATE.page = 0; NOTIF_STATE.hasMore = true;
+    fetchNotifications(0, NOTIF_STATE.filter);
+  };
+
+  // ─── Infinite scroll ─────────────────────────────────────────────
+  function setupNotifInfiniteScroll() {
+    if (NOTIF_STATE.observer) NOTIF_STATE.observer.disconnect();
+    NOTIF_STATE.observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && NOTIF_STATE.hasMore && !NOTIF_STATE.loading) {
+          NOTIF_STATE.listEl.insertAdjacentHTML('beforeend', '<div class="notif-loading-more"><div class="notif-spinner"></div><span>Loading more...</span></div>');
+          fetchNotifications(NOTIF_STATE.page + 1, NOTIF_STATE.filter, true);
+        }
+      });
+    }, { root: NOTIF_STATE.scrollEl, rootMargin: '200px' });
+    if (NOTIF_STATE.sentinelEl) NOTIF_STATE.observer.observe(NOTIF_STATE.sentinelEl);
+  }
+
+  // ─── Filter tabs ─────────────────────────────────────────────────
+  function setupNotifTabs() {
+    document.querySelectorAll('.notif-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        NOTIF_STATE.filter = tab.dataset.filter;
+        NOTIF_STATE.page = 0; NOTIF_STATE.hasMore = true;
+        fetchNotifications(0, NOTIF_STATE.filter);
+      });
+    });
+  }
+
+  // ─── Mark as read ────────────────────────────────────────────────
+  async function markNotifAsRead(id) {
+    const res = await api(`/api/notifications/${id}/read`, { method: 'PUT' });
+    if (!res.ok) return;
+    const item = NOTIF_STATE.listEl.querySelector(`.notif-item[data-id="${id}"]`);
+    if (item) {
+      item.classList.remove('unread'); item.classList.add('read');
+      item.dataset.read = 'true';
+      const actions = item.querySelector('.notif-hover-actions');
+      if (actions) actions.remove();
+      const dot = item.querySelector('.notif-unread-dot');
+      if (dot) dot.style.opacity = '0';
+    }
+    // Update badge with API call for accuracy
+    loadNotificationCount();
+    updateNotifMarkAllBtn();
+  }
+
+  async function markAllNotifsRead() {
+    const btn = document.getElementById('notif-mark-all-btn');
+    btn.disabled = true; btn.textContent = 'Marking...';
+    const res = await api('/api/notifications/read-all', { method: 'PUT' });
+    if (!res.ok) { btn.disabled = false; btn.textContent = 'Mark all as read'; return; }
+    document.querySelectorAll('.notif-item.unread').forEach(el => {
+      el.classList.remove('unread'); el.classList.add('read');
+      el.dataset.read = 'true';
+      const a = el.querySelector('.notif-hover-actions'); if (a) a.remove();
+      const d = el.querySelector('.notif-unread-dot'); if (d) d.style.opacity = '0';
+    });
+    updateNotifBadge(0);
+    btn.disabled = true; btn.textContent = 'All read';
+  }
+
+  function updateNotifMarkAllBtn() {
+    const btn = document.getElementById('notif-mark-all-btn');
+    const hasUnread = document.querySelector('.notif-item.unread');
+    if (btn) { btn.disabled = !hasUnread; btn.textContent = hasUnread ? 'Mark all as read' : 'All read'; }
+  }
+
+  // ─── Real-time new notification ─────────────────────────────────
+  window.handleNewNotification = function(data) {
+    const n = data.notification;
+    const uc = data.unreadCount;
+    if (uc != null) updateNotifBadge(uc);
+    updateNotifMarkAllBtn();
+
+    const overlay = NOTIF_STATE.overlayEl;
+    if (!overlay || !overlay.classList.contains('open')) {
+      showNotifToast(n);
+      const badge = document.getElementById('notif-bell-badge');
+      if (badge) { badge.classList.remove('pulse'); void badge.offsetWidth; badge.classList.add('pulse'); }
+      return;
+    }
+
+    const filter = NOTIF_STATE.filter;
+    if (filter !== 'all' && filter !== 'unread' && filter !== n.type) return;
+
+    const listEl = NOTIF_STATE.listEl;
+    const empty = listEl.querySelector('.notif-empty');
+    if (empty) empty.remove();
+
+    // Find or create Today group
+    let todayGroup = Array.from(listEl.querySelectorAll('.notif-date-group')).find(g =>
+      g.querySelector('.notif-date-label')?.textContent.trim() === 'Today');
+    const itemHtml = renderNotifItem(n);
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = itemHtml;
+    const newItem = wrapper.firstElementChild;
+    newItem.classList.add('new');
+
+    if (todayGroup) {
+      todayGroup.querySelector('.notif-date-label').insertAdjacentElement('afterend', newItem);
+    } else {
+      const group = document.createElement('div'); group.className = 'notif-date-group';
+      group.innerHTML = '<div class="notif-date-label">Today</div>';
+      group.appendChild(newItem);
+      listEl.insertBefore(group, listEl.firstChild);
+    }
+    setTimeout(() => newItem.classList.remove('new'), 400);
+  };
+
+  function showNotifToast(n) {
+    document.querySelectorAll('.notif-toast').forEach(t => t.remove());
+    const tc = ({ TASK_ASSIGNED:'task-assigned', MENTIONED_IN_COMMENT:'mentioned', TASK_UPDATED:'task-updated', BOARD_INVITE:'board-invite' })[n.type] || 'task-assigned';
+    const icon = getNotifIcon(n.type);
+    const toast = document.createElement('div');
+    toast.className = 'notif-toast';
+    toast.innerHTML = `<div class="notif-toast-icon ${tc}">${icon}</div><div class="notif-toast-body"><div class="notif-toast-title">${escHtml(n.title)}</div><div class="notif-toast-msg">${escHtml(n.message)}</div></div>`;
+    toast.addEventListener('click', () => { toast.remove(); toggleNotifPanel(); if (n.taskId) window.location.href = `/tasks/${n.taskId}`; });
+    document.body.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 4500);
+  }
+
+  // ─── Panel toggle ────────────────────────────────────────────────
+  function toggleNotifPanel() {
+    const overlay = NOTIF_STATE.overlayEl;
+    if (overlay.classList.contains('open')) { closeNotifPanel(); }
+    else { openNotifPanel(); }
+  }
+
+  function openNotifPanel() {
+    NOTIF_STATE.overlayEl.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    NOTIF_STATE.page = 0; NOTIF_STATE.hasMore = true;
+    fetchNotifications(0, NOTIF_STATE.filter);
+  }
+
+  function closeNotifPanel() {
+    NOTIF_STATE.overlayEl.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // ─── Listeners ───────────────────────────────────────────────────
+  function setupNotifListeners() {
+    document.getElementById('notif-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleNotifPanel(); });
+    document.getElementById('notif-close-btn').addEventListener('click', closeNotifPanel);
+    NOTIF_STATE.overlayEl.addEventListener('click', (e) => { if (e.target === NOTIF_STATE.overlayEl) closeNotifPanel(); });
+    document.getElementById('notif-mark-all-btn').addEventListener('click', markAllNotifsRead);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNotifPanel(); });
+
+    // Delegate clicks on notification items
+    NOTIF_STATE.scrollEl.addEventListener('click', (e) => {
+      const item = e.target.closest('.notif-item');
+      if (!item) return;
+      const markBtn = e.target.closest('.notif-mark-read-btn');
+      if (markBtn) {
+        e.stopPropagation();
+        markNotifAsRead(parseInt(markBtn.dataset.id));
+        return;
+      }
+      if (item.dataset.read === 'false') markNotifAsRead(parseInt(item.dataset.id));
+      const taskId = item.dataset.taskId;
+      const boardId = item.dataset.boardId;
+      if (taskId) window.location.href = `/tasks/${taskId}`;
+      else if (boardId) window.location.href = `/boards/${boardId}`;
+    });
+  }
+
+  // ─── Utilities ───────────────────────────────────────────────────
+  function escHtml(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function notifTimeAgo(ts) {
+    if (!ts) return '';
+    const diff = Date.now() - new Date(ts).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'Now';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'Yesterday';
+    if (d < 7) return `${d}d`;
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // ─── Init on DOM ready ──────────────────────────────────────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNotifPanel);
+  } else {
+    initNotifPanel();
+  }
+
   // ─── Init ─────────────────────────────────────────────────────────
 
   (async function init() {
     await loadWorkspaces();
-    // Poll online users and notifications every 30s
+    connectWebSocket();
+
+    // Fallback polling (every 60s instead of 30s since WS handles live updates)
     setInterval(() => {
-      if (currentWorkspaceId) {
+      if (currentWorkspaceId && (!stompClient || !stompClient.connected)) {
         loadOnlineUsers();
         loadNotificationCount();
       }
-    }, 30000);
+    }, 60000);
   })();
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 </body>
 </html>

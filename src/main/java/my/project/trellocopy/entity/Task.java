@@ -10,6 +10,8 @@ import my.project.trellocopy.entity.enums.TaskPriority;
 import my.project.trellocopy.entity.enums.TaskStatus;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Setter
 @Getter
@@ -33,9 +35,12 @@ public class Task extends BaseEntity {
 
     private LocalDateTime dueDate;
 
-    private String position;
+    private Long position;
 
     private Boolean archived;
+
+    @ElementCollection
+    private List<String> tags = new ArrayList<>();
 
     @Version
     private Long version;

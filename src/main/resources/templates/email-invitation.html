@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title th:remove="all">Invitation to join [[${workspaceName}]]</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;">
+    <tr>
+        <td align="center" style="padding:40px 16px;">
+            <!-- Card: 600px max -->
+            <table role="presentation" width="100%" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
+
+                <!-- Header with accent bar -->
+                <tr>
+                    <td style="height:4px;background:#6366f1;font-size:1px;line-height:1px;" height="4"> </td>
+                </tr>
+
+                <!-- Logo + Brand -->
+                <tr>
+                    <td align="center" style="padding:36px 32px 0;">
+                        <img src="https://app.collabhub.com/logo.png" alt="CollabHub" width="36" height="36" style="display:block;border:0;" />
+                        <p style="font-size:13px;color:#83899c;margin:8px 0 0 0;font-weight:500;">COLLABHUB</p>
+                    </td>
+                </tr>
+
+                <!-- Heading -->
+                <tr>
+                    <td align="center" style="padding:24px 32px 0;">
+                        <h1 style="margin:0;font-size:22px;font-weight:650;color:#0b0d12;letter-spacing:-.01em;">
+                            You're invited to join
+                        </h1>
+                    </td>
+                </tr>
+
+                <!-- Workspace card -->
+                <tr>
+                    <td align="center" style="padding:20px 32px 0;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:12px;padding:20px 28px;">
+                            <tr>
+                                <td align="center">
+                                    <!-- Workspace avatar placeholder -->
+                                    <div style="width:48px;height:48px;border-radius:12px;background:#6366f1;display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;line-height:48px;text-align:center;" th:text="${workspaceName.substring(0,1).toUpperCase()}">T</div>
+                                    <p style="margin:10px 0 0 0;font-size:17px;font-weight:600;color:#0b0d12;" th:text="${workspaceName}">Team Alpha</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Inviter info -->
+                <tr>
+                    <td align="center" style="padding:16px 32px 0;">
+                        <p style="margin:0;font-size:14px;color:#555a6e;line-height:1.6;">
+                            <span th:text="${inviterName}">John Smith</span>
+                            <span th:if="${inviterEmail}" style="color:#83899c;" th:text="'(' + ${inviterEmail} + ')'">(john@company.com)</span>
+                            <br />
+                            has invited you to join their workspace as
+                            <strong style="color:#0b0d12;" th:text="${role}">Editor</strong>
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- CTA Button -->
+                <tr>
+                    <td align="center" style="padding:28px 32px 0;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" style="border-radius:10px;background:#6366f1;" bgcolor="#6366f1">
+                            <tr>
+                                <td style="border-radius:10px;padding:14px 36px;font-size:15px;font-weight:600;text-align:center;">
+                                    <a th:href="${inviteLink}" href="https://app.collabhub.com/invitation?token=demo" style="color:#ffffff;text-decoration:none;display:inline-block;white-space:nowrap;">
+                                        Accept Invitation
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Expiry -->
+                <tr>
+                    <td align="center" style="padding:14px 32px 0;">
+                        <p style="margin:0;font-size:12px;color:#83899c;">
+                            This invitation expires in <span th:text="${expiresInDays}">5</span> days
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr>
+                    <td style="padding:28px 32px 0;">
+                        <hr style="border:none;border-top:1px solid #e8eaee;margin:0;" />
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="padding:16px 32px 28px;">
+                        <p style="margin:0 0 4px;font-size:12px;color:#83899c;">
+                            CollabHub — Collaborate better
+                        </p>
+                        <p style="margin:0;font-size:11px;color:#a0a5b5;">
+                            You received this email because someone invited you to join a CollabHub workspace.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- End card -->
+        </td>
+    </tr>
+</table>
+</body>
+</html>

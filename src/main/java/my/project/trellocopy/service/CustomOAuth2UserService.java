@@ -65,7 +65,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             newUser.setProviderId(providerId);
             newUser.setAvatarUrl(avatarUrl);
             newUser.setRole(UserRole.USER);
-            newUser.setOnline(Boolean.TRUE);
             User save = userRepository.save(newUser);
             authProvider.setUserId(save.getId());
             return save;

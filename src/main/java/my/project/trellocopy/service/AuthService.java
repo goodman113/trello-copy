@@ -45,7 +45,6 @@ public class AuthService {
         authProvider.setProvider("local");
         authProvider.setProviderUserId(null);
         user.setFullName(signUpRequest.getFullName());
-        user.setOnline(true);
         user.setRole(UserRole.USER);
         User save = userRepository.save(user);
         authProvider.setUserId(save.getId());

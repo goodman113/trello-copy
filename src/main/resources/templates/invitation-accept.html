@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:attr="data-token=${token}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invitation — CollabHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg: #0b0d12;
+      --surface: #12151c;
+      --surface-hover: #1a1d2a;
+      --surface-elevated: #181b26;
+      --border: #1e2231;
+      --border-light: #282d3e;
+      --text: #e2e7f0;
+      --text-secondary: #83899c;
+      --text-muted: #555a6e;
+      --accent: #6366f1;
+      --accent-hover: #5558e6;
+      --accent-dim: rgba(99,102,241,.12);
+      --error: #f87171;
+      --success: #34d399;
+      --success-dim: rgba(52,211,153,.12);
+      --warning: #fbbf24;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --radius-lg: 14px;
+      --radius-full: 999px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 480px;
+      padding: 40px 36px 36px;
+      text-align: center;
+      animation: card-in .3s ease;
+      box-shadow: 0 25px 80px rgba(0,0,0,.4);
+    }
+
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(16px) scale(.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ─── States ─── */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* ─── Icon Circle ─── */
+    .icon-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .icon-circle svg { width: 30px; height: 30px; }
+
+    .icon-circle.accent { background: var(--accent-dim); color: var(--accent); }
+    .icon-circle.success { background: var(--success-dim); color: var(--success); }
+    .icon-circle.warning { background: rgba(251,191,36,.15); color: var(--warning); }
+    .icon-circle.error { background: rgba(248,113,113,.15); color: var(--error); }
+
+    /* ─── Workspace Avatar ─── */
+    .ws-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 auto 16px;
+    }
+
+    /* ─── Typography ─── */
+    h1 {
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: -.01em;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .subtitle strong { color: var(--text); }
+
+    /* ─── Badge ─── */
+    .role-badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 20px;
+    }
+
+    .role-badge.owner { background: rgba(251,191,36,.15); color: var(--warning); }
+    .role-badge.editor { background: var(--accent-dim); color: var(--accent); }
+    .role-badge.viewer { background: rgba(52,211,153,.15); color: var(--success); }
+
+    /* ─── Inviter ─── */
+    .inviter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .inviter img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface-hover);
+    }
+
+    .inviter .avatar-placeholder {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ─── Expiry ─── */
+    .expiry {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    /* ─── Buttons ─── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 24px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      text-decoration: none;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { transform: scale(.98); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 24px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      text-decoration: none;
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-light);
+      color: var(--text);
+    }
+
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 24px;
+      background: rgba(248,113,113,.12);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius);
+      color: var(--error);
+      font-size: 15px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+      text-decoration: none;
+    }
+
+    .btn-danger:hover { background: rgba(248,113,113,.2); }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: none;
+      border: none;
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-decoration: none;
+    }
+
+    .btn-ghost:hover { background: var(--surface-hover); color: var(--text); }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ─── Logo ─── */
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .brand svg { width: 28px; height: 28px; color: var(--accent); }
+
+    .brand span {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ─── Loading ─── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Brand -->
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
+    <span>CollabHub</span>
+  </div>
+
+  <!-- ─── State 1: Error (invalid/expired token) ─── -->
+  <div class="state" th:classappend="${error != null and invitation == null} ? 'active'" id="state-error">
+    <div class="icon-circle error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    </div>
+    <h1>Invitation Not Found</h1>
+    <p class="subtitle" th:text="${error}">This invitation link is invalid or has expired.</p>
+    <a href="/dashboard" class="btn-secondary" style="display:inline-flex;width:auto;padding:10px 24px;">Go to Dashboard</a>
+  </div>
+
+  <!-- ─── State 2: Already accepted ─── -->
+  <div class="state" th:classappend="${invitation != null and invitation.status.name() == 'ACCEPTED'} ? 'active'" id="state-accepted">
+    <div class="icon-circle success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1>You're already a member</h1>
+    <p class="subtitle">
+      You've already joined <strong th:text="${workspaceName}">Team Alpha</strong>.
+    </p>
+    <a th:href="'/dashboard?workspaceId=' + ${invitation.workspaceId}" class="btn-primary">Go to Workspace</a>
+  </div>
+
+  <!-- ─── State 3: Already declined ─── -->
+  <div class="state" th:classappend="${invitation != null and invitation.status.name() == 'DECLINED'} ? 'active'" id="state-declined">
+    <div class="icon-circle warning">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <h1>Invitation Declined</h1>
+    <p class="subtitle">You declined the invitation to join <strong th:text="${workspaceName}">Team Alpha</strong>.</p>
+    <a href="/dashboard" class="btn-secondary" style="display:inline-flex;width:auto;padding:10px 24px;">Go to Dashboard</a>
+  </div>
+
+  <!-- ─── State 4: Not authenticated, PENDING ─── -->
+  <div class="state" th:classappend="${!isAuthenticated and invitation != null and invitation.status.name() == 'PENDING'} ? 'active'" id="state-login">
+    <div th:if="${workspaceColor}" class="ws-avatar" th:style="'background:' + ${workspaceColor}" th:text="${workspaceName?.substring(0,1)?.toUpperCase()}">T</div>
+    <div th:unless="${workspaceColor}" class="ws-avatar" style="background:var(--accent)" th:text="${workspaceName?.substring(0,1)?.toUpperCase()}">T</div>
+    <h1 th:text="'Join ' + ${workspaceName}">Join Team Alpha</h1>
+    <div class="role-badge" th:classappend="${invitation.role.name().toLowerCase()}" th:text="${invitation.role.name()}">EDITOR</div>
+    <div class="inviter">
+      <th:block th:if="${invitation.inviter.avatarUrl}">
+        <img th:src="${invitation.inviter.avatarUrl}" alt="" />
+      </th:block>
+      <th:block th:unless="${invitation.inviter.avatarUrl}">
+        <div class="avatar-placeholder" th:text="${invitation.inviter.name?.substring(0,1)?.toUpperCase() ?: '?'}">J</div>
+      </th:block>
+      <span th:text="'Invited by ' + ${invitation.inviter.name}">Invited by John</span>
+    </div>
+    <div class="expiry">
+      <span>This invitation expires </span>
+      <span th:text="${#temporals.format(invitation.expiresAt, 'MMMM d, yyyy')}">July 3, 2026</span>
+    </div>
+    <a th:href="'/login?redirect=/invitation?token=' + ${token}" class="btn-primary">Sign in to respond</a>
+  </div>
+
+  <!-- ─── State 5: Authenticated, PENDING (the main state) ─── -->
+  <div class="state" th:classappend="${isAuthenticated and invitation != null and invitation.status.name() == 'PENDING'} ? 'active'" id="state-action">
+    <div th:if="${workspaceColor}" class="ws-avatar" th:style="'background:' + ${workspaceColor}" th:text="${workspaceName?.substring(0,1)?.toUpperCase()}">T</div>
+    <div th:unless="${workspaceColor}" class="ws-avatar" style="background:var(--accent)" th:text="${workspaceName?.substring(0,1)?.toUpperCase()}">T</div>
+    <h1 th:text="'Join ' + ${workspaceName}">Join Team Alpha</h1>
+    <div class="role-badge" th:classappend="${invitation.role.name().toLowerCase()}" th:text="${invitation.role.name()}">EDITOR</div>
+    <div class="inviter">
+      <th:block th:if="${invitation.inviter.avatarUrl}">
+        <img th:src="${invitation.inviter.avatarUrl}" alt="" />
+      </th:block>
+      <th:block th:unless="${invitation.inviter.avatarUrl}">
+        <div class="avatar-placeholder" th:text="${invitation.inviter.name?.substring(0,1)?.toUpperCase() ?: '?'}">J</div>
+      </th:block>
+      <span th:text="'Invited by ' + ${invitation.inviter.name}">Invited by John</span>
+    </div>
+    <div class="expiry">
+      <span>This invitation expires </span>
+      <span th:text="${#temporals.format(invitation.expiresAt, 'MMMM d, yyyy')}">July 3, 2026</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn-primary" id="btn-accept">
+        Accept Invitation
+      </button>
+      <button class="btn-danger" id="btn-decline">
+        Decline
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ==================================================================
+   *  INVITATION ACCEPT PAGE — JavaScript
+   *
+   *  Only the "Authenticated + PENDING" state has active JS.
+   *  All other states are rendered by Thymeleaf server-side.
+   * ================================================================== */
+
+  const TOKEN = document.documentElement.dataset.token;
+
+  function api(path, options = {}) {
+    return fetch(path, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+    }).then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })));
+  }
+
+  /* ==================================================================
+   *  POST /api/invitations/{token}/accept
+   *
+   *  What it does:
+   *    Accepts the invitation. Sets status -> ACCEPTED and creates a
+   *    WorkspaceWorker row with the role from the invitation.
+   *    Only works if the current user's email matches the inviteeEmail.
+   *
+   *  Frontend sends:
+   *    Path: token (String, UUID from URL)
+   *
+   *  Frontend expects (200):
+   *    {
+   *      "workspaceId": 1,
+   *      "message": "You've joined Team Alpha"
+   *    }
+   *
+   *  Error codes:
+   *    401 — Not logged in
+   *    403 — Logged-in user's email doesn't match inviteeEmail
+   *    400 — Already accepted / declined / expired
+   *    404 — Token not found
+   * ================================================================== */
+
+  async function acceptInvitation() {
+    const btn = document.getElementById('btn-accept');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Accepting...';
+
+    const res = await api(`/api/invitations/${TOKEN}/accept`, { method: 'POST' });
+
+    if (res.ok) {
+      window.location.href = '/dashboard?workspaceId=' + res.data.workspaceId;
+    } else {
+      alert(res.data.message || 'Failed to accept invitation');
+      btn.disabled = false;
+      btn.textContent = 'Accept Invitation';
+    }
+  }
+
+  /* ==================================================================
+   *  POST /api/invitations/{token}/decline
+   *
+   *  What it does:
+   *    Declines the invitation. Sets status -> DECLINED.
+   *
+   *  Frontend sends:
+   *    Path: token (String, UUID from URL)
+   *
+   *  Frontend expects (200):
+   *    { "message": "Invitation declined" }
+   *
+   *  Error codes:
+   *    401 — Not logged in
+   *    400 — Already accepted / declined / expired
+   *    404 — Token not found
+   * ================================================================== */
+
+  async function declineInvitation() {
+    if (!confirm('Are you sure you want to decline this invitation?')) return;
+
+    const btn = document.getElementById('btn-decline');
+    btn.disabled = true;
+    btn.textContent = 'Declining...';
+
+    const res = await api(`/api/invitations/${TOKEN}/decline`, { method: 'POST' });
+
+    if (res.ok) {
+      // Switch to "Declined" state in-page without reload
+      document.getElementById('state-action').classList.remove('active');
+      document.getElementById('state-declined').classList.add('active');
+    } else {
+      alert(res.data.message || 'Failed to decline invitation');
+      btn.disabled = false;
+      btn.textContent = 'Decline';
+    }
+  }
+
+  // Wire up buttons (only exist in the authenticated + PENDING state)
+  document.addEventListener('DOMContentLoaded', () => {
+    const acceptBtn = document.getElementById('btn-accept');
+    const declineBtn = document.getElementById('btn-decline');
+    if (acceptBtn) acceptBtn.addEventListener('click', acceptInvitation);
+    if (declineBtn) declineBtn.addEventListener('click', declineInvitation);
+  });
+</script>
+</body>
+</html>

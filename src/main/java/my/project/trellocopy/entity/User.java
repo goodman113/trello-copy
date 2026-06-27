@@ -30,7 +30,6 @@ public class User extends BaseEntity {
     private UserRole role;
     private String avatarUrl;
     private LocalDateTime lastSeen;
-    private Boolean online;
     private String providerId;
 
 }

@@ -17,7 +17,7 @@ public class BoardColumn extends BaseEntity {
 
     private String title;
 
-    private String positon;
+    private Long position;
 
     @ManyToOne
     private Board board;

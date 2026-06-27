@@ -1,0 +1,2554 @@
+<!DOCTYPE html>
+<html lang="en" th:attr="data-board-id=${boardId}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">Board — CollabHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg: #0b0d12;
+      --sidebar: #0e1017;
+      --sidebar-hover: #181b26;
+      --surface: #12151c;
+      --surface-hover: #1a1d2a;
+      --surface-elevated: #181b26;
+      --border: #1e2231;
+      --border-light: #282d3e;
+      --text: #e2e7f0;
+      --text-secondary: #83899c;
+      --text-muted: #555a6e;
+      --accent: #6366f1;
+      --accent-hover: #5558e6;
+      --accent-dim: rgba(99,102,241,.12);
+      --error: #f87171;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --orange: #fb923c;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --radius-lg: 14px;
+      --column-width: 300px;
+      --sidebar-width: 320px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ─── Top Bar ─── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+      z-index: 100;
+      min-height: 52px;
+    }
+
+    .topbar-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background .15s, color .15s;
+      cursor: pointer;
+    }
+    .topbar-back:hover { background: var(--surface-hover); color: var(--text); }
+    .topbar-back svg { width: 16px; height: 16px; }
+
+    .topbar-board-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .topbar-board-name-input {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      padding: 2px 4px;
+      transition: border-color .2s;
+      min-width: 120px;
+    }
+    .topbar-board-name-input:focus { border-bottom-color: var(--accent); }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .topbar-members {
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
+    }
+    .topbar-members .avatar-stack {
+      display: flex;
+      align-items: center;
+    }
+    .topbar-members .avatar-stack img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      margin-left: -6px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform .15s;
+    }
+    .topbar-members .avatar-stack img:first-child { margin-left: 0; }
+    .topbar-members .avatar-stack img:hover { transform: translateY(-2px); z-index: 2; position: relative; }
+    .topbar-members .avatar-stack .more-count {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--surface-hover);
+      border: 2px solid var(--bg);
+      margin-left: -6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      position: relative;
+    }
+    .btn-icon:hover { background: var(--surface-hover); color: var(--text); }
+    .btn-icon svg { width: 18px; height: 18px; }
+
+    .btn-primary-sm {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .2s, transform .15s;
+      white-space: nowrap;
+    }
+    .btn-primary-sm:hover { background: var(--accent-hover); }
+    .btn-primary-sm:active { transform: scale(.97); }
+
+    /* ─── WS Status ─── */
+    .ws-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      transition: background .3s;
+    }
+    .ws-status.connected { color: var(--success); background: rgba(52,211,153,.1); }
+    .ws-status.connecting { color: var(--warning); background: rgba(251,191,36,.1); }
+    .ws-status.disconnected { color: var(--error); background: rgba(248,113,113,.1); }
+    .ws-status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ws-status.connected .dot { background: var(--success); }
+    .ws-status.connecting .dot { background: var(--warning); animation: pulse-dot 1.5s infinite; }
+    .ws-status.disconnected .dot { background: var(--error); }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: .5; }
+      50% { transform: scale(1.4); opacity: 1; }
+    }
+
+    /* ─── Main Layout ─── */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    /* ─── Board Area ─── */
+    .board-area {
+      flex: 1;
+      overflow: auto;
+      padding: 20px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(99,102,241,.04) 0%, transparent 60%),
+        var(--bg);
+    }
+
+    .board-area::-webkit-scrollbar { height: 8px; }
+    .board-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ─── Board Header ─── */
+    .board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    .board-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .board-header-left h1 {
+      font-size: 20px;
+      font-weight: 650;
+    }
+    .board-header-left .board-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    /* ─── Columns Container ─── */
+    .columns-container {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      flex: 1;
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+
+    /* ─── Column ─── */
+    .column {
+      width: var(--column-width);
+      min-width: var(--column-width);
+      max-height: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      transition: border-color .2s, box-shadow .2s, opacity .2s, transform .2s;
+      position: relative;
+    }
+    .column:hover { border-color: var(--border-light); }
+    .column.drag-over { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .column.dragging { opacity: .5; }
+    .column-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 14px 10px;
+      flex-shrink: 0;
+      cursor: grab;
+    }
+    .column-header:active { cursor: grabbing; }
+    .column-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .column-title-edit {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid var(--accent);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      flex: 1;
+      padding: 0 2px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .column-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface-hover);
+      padding: 0 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      min-width: 22px;
+      text-align: center;
+    }
+    .column-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .column:hover .column-actions { opacity: 1; }
+    .column-actions .btn-icon {
+      width: 26px;
+      height: 26px;
+    }
+    .column-actions .btn-icon svg { width: 14px; height: 14px; }
+
+    /* ─── Task List ─── */
+    .task-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 10px 10px;
+      min-height: 60px;
+    }
+    .task-list::-webkit-scrollbar { width: 4px; }
+    .task-list.drag-over { background: rgba(99,102,241,.06); border-radius: var(--radius-sm); }
+
+    /* ─── Task Card ─── */
+    .task-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s, transform .15s, opacity .2s;
+      position: relative;
+    }
+    .task-card:last-child { margin-bottom: 0; }
+    .task-card:hover {
+      border-color: var(--border-light);
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    }
+    .task-card:active { transform: scale(.98); }
+    .task-card.dragging {
+      opacity: .4;
+      transform: rotate(2deg);
+    }
+    .task-card.drag-over-top { border-top: 2px solid var(--accent); }
+    .task-card.drag-over-bottom { border-bottom: 2px solid var(--accent); }
+    .task-card .task-priority-bar {
+      width: 100%;
+      height: 3px;
+      border-radius: 2px;
+      margin-bottom: 10px;
+    }
+    .task-card .task-title {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .task-card .task-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .task-card .task-priority {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .task-priority.urgent { background: rgba(248,113,113,.15); color: var(--error); }
+    .task-priority.high { background: rgba(248,113,113,.12); color: var(--error); }
+    .task-priority.medium { background: rgba(251,191,36,.12); color: var(--warning); }
+    .task-priority.low { background: rgba(52,211,153,.12); color: var(--success); }
+
+    .task-card .task-due {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .task-card .task-due.urgent { color: var(--error); }
+    .task-card .task-due svg { width: 12px; height: 12px; }
+
+    .task-card .task-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .task-card .task-assignee {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .task-card .task-comments {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .task-card .task-comments svg { width: 13px; height: 13px; }
+    .task-card .task-check {
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid var(--text-muted);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color .2s, background .2s;
+    }
+    .task-card .task-check:hover { border-color: var(--accent); }
+    .task-card .task-check.done {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .task-card .task-check.done::after {
+      content: '✓';
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    /* ─── Add Task Button ─── */
+    .add-task-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      margin: 8px 10px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 450;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      flex-shrink: 0;
+      border: 1px dashed var(--border);
+    }
+    .add-task-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+      border-color: var(--border-light);
+    }
+    .add-task-btn svg { width: 14px; height: 14px; }
+
+    .add-task-inline {
+      padding: 0 10px 10px;
+      flex-shrink: 0;
+    }
+    .add-task-inline textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1.5px solid var(--accent);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      min-height: 36px;
+      max-height: 120px;
+    }
+    .add-task-inline .inline-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .add-task-inline .inline-actions button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .add-task-inline .inline-actions .save { background: var(--accent); color: #fff; }
+    .add-task-inline .inline-actions .save:hover { background: var(--accent-hover); }
+    .add-task-inline .inline-actions .cancel { background: transparent; color: var(--text-muted); }
+    .add-task-inline .inline-actions .cancel:hover { background: var(--surface-hover); color: var(--text); }
+
+    /* ─── Add Column Button ─── */
+    .add-column-btn {
+      min-width: var(--column-width);
+      width: var(--column-width);
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .add-column-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+      border-color: var(--border-light);
+    }
+    .add-column-btn svg { width: 16px; height: 16px; }
+
+    .add-column-inline {
+      min-width: var(--column-width);
+      width: var(--column-width);
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      flex-shrink: 0;
+    }
+    .add-column-inline input {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .add-column-inline input:focus { border-color: var(--accent); }
+    .add-column-inline .inline-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .add-column-inline .inline-actions button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .add-column-inline .inline-actions .save { background: var(--accent); color: #fff; }
+    .add-column-inline .inline-actions .save:hover { background: var(--accent-hover); }
+    .add-column-inline .inline-actions .cancel { background: transparent; color: var(--text-muted); }
+    .add-column-inline .inline-actions .cancel:hover { background: var(--surface-hover); color: var(--text); }
+
+    /* ─── Activity Sidebar ─── */
+    .activity-sidebar {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      background: var(--sidebar);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: margin-right .3s ease, opacity .3s ease;
+    }
+    .activity-sidebar.collapsed {
+      margin-right: calc(var(--sidebar-width) * -1);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .activity-sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .activity-sidebar-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .activity-sidebar-header .btn-icon { width: 28px; height: 28px; }
+    .activity-sidebar-header .btn-icon svg { width: 16px; height: 16px; }
+
+    .activity-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 10px;
+      padding: 10px 8px;
+      border-radius: var(--radius-sm);
+      transition: background .15s;
+    }
+    .activity-item:hover { background: var(--surface-hover); }
+    .activity-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface-hover);
+    }
+    .activity-body { flex: 1; min-width: 0; }
+    .activity-text {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+    .activity-text strong { color: var(--text); font-weight: 550; }
+    .activity-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* ─── Online Users in Sidebar ─── */
+    .sidebar-online-section {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      flex-shrink: 0;
+    }
+    .sidebar-online-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .sidebar-online-header h4 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-muted);
+    }
+    .sidebar-online-header span { font-size: 11px; color: var(--text-muted); }
+    .sidebar-online-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .sidebar-online-user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      transition: background .15s;
+      cursor: pointer;
+    }
+    .sidebar-online-user:hover { background: var(--surface-hover); }
+    .sidebar-online-user img {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .sidebar-online-user .name {
+      font-size: 13px;
+      font-weight: 450;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sidebar-online-user .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .sidebar-online-user .dot.online { background: var(--success); }
+    .sidebar-online-user .dot.idle { background: var(--warning); }
+    .sidebar-online-user .dot.dnd { background: var(--error); }
+
+    /* ─── Cursor Overlay ─── */
+    .cursor-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .remote-cursor {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      pointer-events: none;
+      transition: transform .3s ease;
+      z-index: 50;
+    }
+    .remote-cursor img {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      object-fit: cover;
+    }
+    .remote-cursor .cursor-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: #fff;
+      background: var(--accent);
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* ─── Modals ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: modal-in .2s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(16px) scale(.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal h2 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    .modal .input-group { margin-bottom: 14px; }
+    .modal .input-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 5px;
+      color: var(--text-secondary);
+    }
+    .modal .input-group input,
+    .modal .input-group select,
+    .modal .input-group textarea {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .modal .input-group input:focus,
+    .modal .input-group select:focus,
+    .modal .input-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+    .modal .input-group select { appearance: none; cursor: pointer; }
+    .modal .input-group textarea { resize: vertical; min-height: 60px; }
+    .modal .input-row {
+      display: flex;
+      gap: 12px;
+    }
+    .modal .input-row .input-group { flex: 1; }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 18px;
+    }
+
+    .btn-secondary {
+      padding: 7px 16px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-light); color: var(--text); }
+    .btn-primary {
+      padding: 7px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-danger {
+      padding: 7px 16px;
+      background: rgba(248,113,113,.12);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--error);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-danger:hover { background: rgba(248,113,113,.2); }
+
+    /* ─── Skeleton ─── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton-h { height: 14px; margin-bottom: 8px; }
+    .skeleton-w-60 { width: 60%; }
+    .skeleton-w-40 { width: 40%; }
+    .skeleton-h-80 { height: 80px; }
+    .skeleton-h-40 { height: 40px; }
+    .skeleton-round { border-radius: 50%; }
+    .skeleton-card {
+      height: 100px;
+      margin-bottom: 8px;
+      border-radius: var(--radius);
+    }
+    .skeleton-column {
+      width: var(--column-width);
+      min-width: var(--column-width);
+      height: 300px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      gap: 8px;
+    }
+
+    /* ─── Toast ─── */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+    }
+    .toast {
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 450;
+      animation: toast-in .3s ease;
+      max-width: 360px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.success { background: rgba(52,211,153,.15); color: var(--success); border: 1px solid rgba(52,211,153,.2); }
+    .toast.error { background: rgba(248,113,113,.15); color: var(--error); border: 1px solid rgba(248,113,113,.2); }
+    .toast.info { background: rgba(99,102,241,.15); color: var(--accent); border: 1px solid rgba(99,102,241,.2); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Confirmation Dialog ─── */
+    .confirm-dialog .modal { max-width: 400px; text-align: center; }
+    .confirm-dialog p { font-size: 14px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.5; }
+    .confirm-dialog .modal-actions { justify-content: center; }
+
+    /* ─── Empty State ─── */
+    .empty-state {
+      text-align: center;
+      padding: 24px 12px;
+      color: var(--text-muted);
+    }
+    .empty-state svg { width: 36px; height: 36px; margin-bottom: 8px; opacity: .3; }
+    .empty-state p { font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- ─── Top Bar ─── -->
+<header class="topbar">
+  <a class="topbar-back" href="/dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back
+  </a>
+  <div class="topbar-board-name">
+    <input type="text" class="topbar-board-name-input" id="board-name-input" placeholder="Board name" />
+  </div>
+
+  <div class="topbar-actions">
+    <div class="topbar-members" id="topbar-members"></div>
+
+    <button class="btn-icon" id="toggle-sidebar-btn" title="Toggle activity sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+    </button>
+
+    <button class="btn-icon" id="share-board-btn" title="Share board">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    </button>
+
+    <button class="btn-icon" id="board-menu-btn" title="Board menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    </button>
+
+    <div class="ws-status disconnected" id="ws-status">
+      <span class="dot"></span>
+      <span class="label">Disconnected</span>
+    </div>
+  </div>
+</header>
+
+<!-- ─── Main Layout ─── -->
+<div class="main-layout">
+
+  <!-- Board Area -->
+  <div class="board-area" id="board-area">
+
+    <!-- Board Header -->
+    <div class="board-header">
+      <div class="board-header-left">
+        <div class="board-color-dot" id="board-color-dot"></div>
+        <h1 id="board-title-display">Loading...</h1>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-primary-sm" id="filter-btn" style="background:transparent;border:1px solid var(--border);color:var(--text-secondary)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          Filter
+        </button>
+      </div>
+    </div>
+
+    <!-- Columns -->
+    <div class="columns-container" id="columns-container">
+      <!-- Columns rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Activity Sidebar -->
+  <aside class="activity-sidebar" id="activity-sidebar">
+    <div class="activity-sidebar-header">
+      <h3>Activity</h3>
+      <button class="btn-icon" id="close-sidebar-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="activity-list" id="sidebar-activity-list">
+      <div class="empty-state"><p>No activity yet</p></div>
+    </div>
+    <div class="sidebar-online-section">
+      <div class="sidebar-online-header">
+        <h4>Online</h4>
+        <span id="sidebar-online-count">0</span>
+      </div>
+      <div class="sidebar-online-list" id="sidebar-online-list">
+        <div class="empty-state" style="padding:12px 0"><p>No one online</p></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Cursor Overlay -->
+  <div class="cursor-overlay" id="cursor-overlay"></div>
+
+</div>
+
+<!-- ─── Task Detail Modal ─── -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <h2 id="task-modal-title">Task</h2>
+    <div class="input-group">
+      <label>Title</label>
+      <input type="text" id="task-edit-title" />
+    </div>
+    <div class="input-group">
+      <label>Description</label>
+      <textarea id="task-edit-description" rows="3"></textarea>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Priority</label>
+        <select id="task-edit-priority">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Due Date</label>
+        <input type="date" id="task-edit-duedate" />
+      </div>
+    </div>
+    <div class="input-group">
+      <label>Assignee</label>
+      <select id="task-edit-assignee"></select>
+    </div>
+    <div class="input-group">
+      <label>Column</label>
+      <select id="task-edit-column"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" id="task-modal-delete">Delete</button>
+      <button class="btn-secondary" id="task-modal-cancel">Cancel</button>
+      <button class="btn-primary" id="task-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Create Task Modal ─── -->
+<div class="modal-overlay" id="create-task-modal">
+  <div class="modal">
+    <h2>Create Task</h2>
+    <div class="input-group">
+      <label>Title</label>
+      <input type="text" id="create-task-title" placeholder="e.g. Design new landing page" />
+    </div>
+    <div class="input-group">
+      <label>Description (optional)</label>
+      <textarea id="create-task-description" rows="2" placeholder="Add details..."></textarea>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Priority</label>
+        <select id="create-task-priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Due Date</label>
+        <input type="date" id="create-task-duedate" />
+      </div>
+    </div>
+    <div class="input-group">
+      <label>Assignee</label>
+      <select id="create-task-assignee"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="create-task-cancel">Cancel</button>
+      <button class="btn-primary" id="create-task-save">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Confirm Dialog ─── -->
+<div class="modal-overlay confirm-dialog" id="confirm-dialog">
+  <div class="modal">
+    <h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-message">This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn-danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast Container ─── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  /* =================================================================
+   *  BOARD PAGE JAVASCRIPT
+   *
+   *  API CONTRACTS — each endpoint documents what the frontend sends
+   *  and what it expects back.
+   * ================================================================= */
+
+  // ─── State ──────────────────────────────────────────────────────────
+
+  const STATE = {
+    board: null,
+    columns: [],           // { id, title, position, tasks: [...] }
+    members: [],           // workspace members
+    onlineUsers: [],
+    activities: [],
+    currentTaskId: null,   // for edit modal
+    draggedColumn: null,
+    draggedTask: null,
+    dragSourceColumnId: null,
+  };
+
+  const BOARD_ID = parseInt(document.documentElement.dataset.boardId) ||
+                   parseInt(new URLSearchParams(location.search).get('boardId')) ||
+                   0;
+
+  // ─── Utils ──────────────────────────────────────────────────────────
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  function api(path, options = {}) {
+    return fetch(path, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      credentials: 'same-origin',
+      ...options,
+    }).then(async r => {
+      const data = r.status === 204 ? null : await r.json().catch(() => null);
+      return { ok: r.ok, status: r.status, data };
+    });
+  }
+
+  function toast(msg, type = 'info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-10px)'; setTimeout(() => el.remove(), 300); }, 3000);
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return '';
+    const diff = Date.now() - new Date(ts).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const h = Math.floor(mins / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'yesterday';
+    return `${d}d ago`;
+  }
+
+  function formatDate(d) {
+    if (!d) return '';
+    const date = new Date(d);
+    const now = new Date();
+    const diff = date - now;
+    const days = Math.ceil(diff / 86400000);
+    if (days <= 0) return 'Overdue';
+    if (days === 1) return 'Due tomorrow';
+    if (days <= 7) return `In ${days} days`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function isUrgent(d) {
+    if (!d) return false;
+    return new Date(d) - new Date() < 86400000;
+  }
+
+  function priorityColor(p) {
+    const map = { urgent: '#f87171', high: '#f87171', medium: '#fbbf24', low: '#34d399' };
+    return map[p] || '#555a6e';
+  }
+
+  // ─── WebSocket STOMP ────────────────────────────────────────────────
+
+  /*
+   * WS connection uses STOMP over SockJS.
+   *
+   * Subscribe to /topic/board/{boardId} for:
+   *   { type: "TASK_CREATED" | "TASK_UPDATED" | "TASK_MOVED" | "TASK_DELETED" |
+   *            "COLUMN_CREATED" | "COLUMN_UPDATED" | "COLUMN_DELETED" | "COLUMN_MOVED" |
+   *            "ACTIVITY_NEW",
+   *     payload: { ... } }
+   *
+   * Send cursor position to /app/board/{boardId}/cursor:
+   *   { x: px, y: px, userId: id, name: "...", avatarUrl: "..." }
+   *
+   * Receive cursor updates on /topic/board/{boardId}/cursors:
+   *   [ { userId, name, avatarUrl, x, y } ]
+   */
+
+  let stompClient = null;
+  let reconnectTimer = null;
+
+  function connectWs() {
+    setWsStatus('connecting');
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = () => {};
+    stompClient.connect({}, () => {
+      setWsStatus('connected');
+      stompClient.subscribe(`/topic/board/${BOARD_ID}`, msg => {
+        try { handleWsMessage(JSON.parse(msg.body)); } catch(e) {}
+      });
+      stompClient.subscribe(`/topic/board/${BOARD_ID}/cursors`, msg => {
+        try { renderRemoteCursors(JSON.parse(msg.body)); } catch(e) {}
+      });
+    }, () => {
+      setWsStatus('disconnected');
+      scheduleReconnect();
+    });
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connectWs, 3000);
+  }
+
+  function setWsStatus(status) {
+    const el = document.getElementById('ws-status');
+    el.className = `ws-status ${status}`;
+    const labels = { connected: 'Live', connecting: 'Connecting...', disconnected: 'Disconnected' };
+    el.querySelector('.label').textContent = labels[status];
+  }
+
+  function sendWsCursor(x, y) {
+    if (!stompClient || !stompClient.connected) return;
+    stompClient.send(`/app/board/${BOARD_ID}/cursor`, {}, JSON.stringify({ x, y }));
+  }
+
+  function handleWsMessage(msg) {
+    const { type, payload } = msg;
+    switch (type) {
+      case 'TASK_CREATED':   handleTaskCreated(payload); break;
+      case 'TASK_UPDATED':   handleTaskUpdated(payload); break;
+      case 'TASK_MOVED':     handleTaskMoved(payload); break;
+      case 'TASK_DELETED':   handleTaskDeleted(payload); break;
+      case 'COLUMN_CREATED': handleColumnCreated(payload); break;
+      case 'COLUMN_UPDATED': handleColumnUpdated(payload); break;
+      case 'COLUMN_DELETED': handleColumnDeleted(payload); break;
+      case 'COLUMN_MOVED':   handleColumnMoved(payload); break;
+      case 'ACTIVITY_NEW':   handleActivityNew(payload); break;
+    }
+  }
+
+  function handleTaskCreated(task) {
+    const col = STATE.columns.find(c => c.id === task.boardColumnId);
+    if (!col) return;
+    col.tasks.push(task);
+    col.tasks.sort((a,b) => (a.position || 0) - (b.position || 0));
+    renderColumns();
+    toast(`Task "${task.title}" created`, 'success');
+  }
+
+  function handleTaskUpdated(task) {
+    for (const col of STATE.columns) {
+      const idx = col.tasks.findIndex(t => t.id === task.id);
+      if (idx !== -1) {
+        col.tasks[idx] = { ...col.tasks[idx], ...task };
+        break;
+      }
+    }
+    renderColumns();
+  }
+
+  function handleTaskMoved({ taskId, fromColumnId, toColumnId, position }) {
+    let task = null;
+    const fromCol = STATE.columns.find(c => c.id === fromColumnId);
+    if (fromCol) {
+      const idx = fromCol.tasks.findIndex(t => t.id === taskId);
+      if (idx !== -1) task = fromCol.tasks.splice(idx, 1)[0];
+    }
+    if (!task) return;
+    task.boardColumnId = toColumnId;
+    task.position = position;
+    const toCol = STATE.columns.find(c => c.id === toColumnId);
+    if (toCol) {
+      toCol.tasks.push(task);
+      toCol.tasks.sort((a,b) => (a.position || 0) - (b.position || 0));
+    }
+    renderColumns();
+  }
+
+  function handleTaskDeleted({ taskId }) {
+    for (const col of STATE.columns) {
+      const idx = col.tasks.findIndex(t => t.id === taskId);
+      if (idx !== -1) { col.tasks.splice(idx, 1); break; }
+    }
+    renderColumns();
+    toast('Task deleted', 'info');
+  }
+
+  function handleColumnCreated(col) {
+    STATE.columns.push({ ...col, tasks: [] });
+    STATE.columns.sort((a,b) => (a.position || 0) - (b.position || 0));
+    renderColumns();
+    toast(`Column "${col.title}" created`, 'success');
+  }
+
+  function handleColumnUpdated(col) {
+    const existing = STATE.columns.find(c => c.id === col.id);
+    if (existing) { Object.assign(existing, col); renderColumns(); }
+  }
+
+  function handleColumnDeleted({ columnId }) {
+    STATE.columns = STATE.columns.filter(c => c.id !== columnId);
+    renderColumns();
+    toast('Column deleted', 'info');
+  }
+
+  function handleColumnMoved({ columnId, position }) {
+    const col = STATE.columns.find(c => c.id === columnId);
+    if (col) { col.position = position; STATE.columns.sort((a,b) => (a.position || 0) - (b.position || 0)); renderColumns(); }
+  }
+
+  function handleActivityNew(activity) {
+    STATE.activities.unshift(activity);
+    if (STATE.activities.length > 50) STATE.activities.pop();
+    renderActivity();
+  }
+
+  // ─── Remote Cursors ────────────────────────────────────────────────
+
+  let cursorPositions = {};
+  let myCursorId = 'user_' + Math.random().toString(36).slice(2, 8);
+
+  function renderRemoteCursors(cursors) {
+    const overlay = document.getElementById('cursor-overlay');
+    overlay.innerHTML = '';
+    if (!cursors || !cursors.length) return;
+
+    cursors.forEach(c => {
+      if (c.userId === myCursorId) return;
+      const el = document.createElement('div');
+      el.className = 'remote-cursor';
+      el.style.transform = `translate(${c.x}px, ${c.y}px)`;
+      el.innerHTML = `
+        <img src="${c.avatarUrl || ''}" alt="${c.name}" />
+        <span class="cursor-label">${c.name}</span>
+      `;
+      overlay.appendChild(el);
+    });
+  }
+
+  // ─── API Calls ──────────────────────────────────────────────────────
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: GET /api/boards/{boardId}
+   *  Purpose:  Fetch single board details
+   *  Response: {
+   *    "id": 1,
+   *    "title": "Sprint 24",
+   *    "description": "...",
+   *    "color": "#6366f1",
+   *    "workspaceId": 1,
+   *    "createdAt": "2026-05-20T10:00:00Z"
+   *  }
+   * =====================================================================
+   */
+
+  async function loadBoard() {
+    const res = await api(`/api/boards/${BOARD_ID}`);
+    if (!res.ok) { showBoardError('Board not found'); return; }
+    STATE.board = res.data;
+    renderBoardHeader();
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: PUT /api/boards/boards/{id}
+   *  Purpose:  Update board (title, description, color)
+   *  Request:  { "title": "New name", "description": "...", "color": "#6366f1" }
+   *  Response: { "id": 1, "title": "New name", ... }
+   * =====================================================================
+   */
+
+  async function updateBoard(data) {
+    const res = await api(`/api/boards/boards/${BOARD_ID}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) { toast('Failed to update board', 'error'); return null; }
+    return res.data;
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: GET /api/boards/{boardId}/columns
+   *  Purpose:  Get all columns with their tasks for a board
+   *  Response: {
+   *    "columns": [
+   *      { "id": 1, "title": "To Do", "position": 0, "tasks": [
+   *        { "id": 1, "title": "Design login", "priority": "high",
+   *          "assignee": { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *          "dueDate": "2026-06-01T00:00:00Z", "position": 0,
+   *          "boardColumnId": 1, "commentCount": 3, "status": "todo" }
+   *      ]}
+   *    ]
+   *  }
+   *
+   *  NOTE: This endpoint does NOT exist yet. You need to create it.
+   *  Alternatively, you can merge board + column + task loading.
+   * =====================================================================
+   */
+
+  async function loadColumns() {
+    const res = await api(`/api/boards/${BOARD_ID}/columns`);
+    if (!res.ok) { showBoardError('Failed to load columns'); return; }
+    STATE.columns = (res.data.columns || []).sort((a,b) => (a.position || 0) - (b.position || 0));
+    renderColumns();
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: POST /api/boards/{boardId}/columns
+   *  Purpose:  Create a new column
+   *  Request:  { "title": "In Progress", "position": 2 }
+   *  Response: { "id": 5, "title": "In Progress", "position": 2, "boardId": 1 }
+   *
+   *  NOTE: This endpoint does NOT exist yet. Create ColumnController or
+   *  add to BoardController.
+   * =====================================================================
+   */
+
+  async function createColumn(data) {
+    const res = await api(`/api/boards/${BOARD_ID}/columns`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: PUT /api/columns/{columnId}
+   *  Purpose:  Update column (rename)
+   *  Request:  { "title": "New name" }
+   *  Response: { "id": 1, "title": "New name", "position": 0 }
+   *
+   *  NOTE: This endpoint does NOT exist yet.
+   * =====================================================================
+   */
+
+  async function updateColumn(id, data) {
+    const res = await api(`/api/columns/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: DELETE /api/columns/{columnId}
+   *  Purpose:  Delete a column and its tasks
+   *  Response: { "message": "Column deleted" }
+   *
+   *  NOTE: This endpoint does NOT exist yet.
+   * =====================================================================
+   */
+
+  async function deleteColumn(id) {
+    const res = await api(`/api/columns/${id}`, { method: 'DELETE' });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: PUT /api/columns/{columnId}/position
+   *  Purpose:  Reorder columns (drag-and-drop)
+   *  Request:  { "position": 3 }
+   *  Response: { "id": 1, "position": 3 }
+   *
+   *  NOTE: This endpoint does NOT exist yet.
+   * =====================================================================
+   */
+
+  async function moveColumn(affected) {
+    return api(`/api/columns/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ columns: affected }),
+    });
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: POST /api/tasks
+   *  Purpose:  Create a task
+   *  Request:  { "title": "...", "description": "...", "priority": "medium",
+   *              "assigneeId": 1, "dueDate": "2026-06-01T00:00:00",
+   *              "boardColumnId": 1 }
+   *  Response: { "id": 42, "title": "...", "priority": "medium",
+   *              "assignee": { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *              "dueDate": "2026-06-01T00:00:00", "boardColumnId": 1,
+   *              "position": 0, "status": "todo", "commentCount": 0 }
+   * =====================================================================
+   */
+
+  async function createTask(data) {
+    const res = await api('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: PUT /api/tasks/{taskId}
+   *  Purpose:  Update task details (title, description, priority,
+   *            assigneeId, dueDate, boardColumnId)
+   *  Request:  { "title": "...", "description": "...", "priority": "high",
+   *              "assigneeId": 2, "dueDate": "2026-06-10T00:00:00",
+   *              "boardColumnId": 2 }
+   *  Response: { "id": 42, ...updated fields... }
+   *
+   *  NOTE: This PUT /api/tasks/{id} endpoint does NOT exist yet.
+   *  The existing TaskController only has PUT for status.
+   * =====================================================================
+   */
+
+  async function updateTask(id, data) {
+    const res = await api(`/api/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: PUT /api/tasks/{taskId}/status
+   *  Purpose:  Toggle task completion status
+   *  Request:  { "status": "done" | "todo" }
+   *  Response: { "id": 42, "status": "done" }
+   * =====================================================================
+   */
+
+  async function updateTaskStatus(id, status) {
+    const res = await api(`/api/tasks/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: PUT /api/tasks/{taskId}/move
+   *  Purpose:  Move task to another column/position (drag-and-drop)
+   *  Request:  { "boardColumnId": 3, "position": 2 }
+   *  Response: { "id": 42, "boardColumnId": 3, "position": 2 }
+   *
+   *  NOTE: This endpoint does NOT exist yet.
+   * =====================================================================
+   */
+
+  async function moveTask(data) {
+    return api(`/api/tasks/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: DELETE /api/tasks/{taskId}
+   *  Purpose:  Delete a task
+   *  Response: { "message": "Task deleted" }
+   * =====================================================================
+   */
+
+  async function deleteTaskApi(id) {
+    const res = await api(`/api/tasks/${id}`, { method: 'DELETE' });
+    return { ok: res.ok, data: res.data };
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: GET /api/activity?workspaceId={workspaceId}
+   *  Purpose:  Fetch activity logs for the workspace
+   *  Response: { "activities": [
+   *    { "id": 1, "type": "TASK_CREATED", "message": "Jane created '...'",
+   *      "user": { "id": 1, "name": "Jane", "avatarUrl": "" },
+   *      "timestamp": "2026-05-20T10:30:00Z" }
+   *  ]}
+   * =====================================================================
+   */
+
+  async function loadActivity() {
+    const wsId = STATE.board?.workspaceId;
+    if (!wsId) return;
+    const res = await api(`/api/activity?workspaceId=${wsId}`);
+    if (!res.ok) return;
+    STATE.activities = (res.data.activities || []).slice(0, 50);
+    renderActivity();
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: GET /api/users/online?workspaceId={workspaceId}
+   *  Purpose:  Get all online users in the workspace
+   *  Response: { ... } — wraps list of users
+   *
+   *  NOTE: UserController returns userService.getAllUsersByWorkspaceAndOnline()
+   *  directly, not wrapped. Adjust as needed. We assume it returns
+   *  { "users": [...] } or we handle both.
+   * =====================================================================
+   */
+
+  async function loadOnlineUsers() {
+    const wsId = STATE.board?.workspaceId;
+    if (!wsId) return;
+    const res = await api(`/api/users/online?workspaceId=${wsId}`);
+    if (!res.ok) return;
+    const raw = res.data;
+    const list = raw.users || (Array.isArray(raw) ? raw : []);
+    STATE.onlineUsers = list;
+    renderOnlineUsers();
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: GET /api/workspaces/workspaces/{id}/boards
+   *  Purpose:  Get boards for workspace (used to load workspace members)
+   *
+   *  For members, we may need a separate call:
+   *  GET /api/workspaces/workspaces/{id}/members  -- does NOT exist yet.
+   *  We'll assume the workspace response includes member info or
+   *  we use the workspace workers endpoint.
+   * =====================================================================
+   */
+
+  async function loadWorkspaceMembers() {
+    const wsId = STATE.board?.workspaceId;
+    if (!wsId) return;
+    // Try to get members — adjust endpoint as needed
+    const res = await api(`/api/workspaces/workspaces/${wsId}/boards`);
+    // We mainly need the board list to verify workspace exists
+    // For members in the assignee dropdown, we'd need a members endpoint
+  }
+
+  /*
+   * =====================================================================
+   *  ENDPOINT: GET /api/notifications/count
+   *  Purpose:  Fetch unread notification count
+   *  Response: { "count": 3 }
+   * =====================================================================
+   */
+
+  async function loadNotifCount() {
+    // Used for badge display if needed
+  }
+
+  // ─── Render Functions ──────────────────────────────────────────────
+
+  function showBoardError(msg) {
+    const container = document.getElementById('columns-container');
+    container.innerHTML = `<div class="empty-state" style="grid-column:1/-1;padding:60px 20px">
+      <p style="font-size:16px;color:var(--text-secondary)">${msg}</p>
+    </div>`;
+    document.getElementById('board-title-display').textContent = 'Error';
+  }
+
+  function renderBoardHeader() {
+    const b = STATE.board;
+    if (!b) return;
+    document.getElementById('page-title').textContent = `${b.title} — CollabHub`;
+    document.getElementById('board-title-display').textContent = b.title;
+    const input = document.getElementById('board-name-input');
+    input.value = b.title;
+    input.dataset.originalTitle = b.title;
+    const dot = document.getElementById('board-color-dot');
+    dot.style.background = b.color || '#6366f1';
+  }
+
+  function renderColumns() {
+    const container = document.getElementById('columns-container');
+    container.innerHTML = '';
+
+    STATE.columns.forEach((col, ci) => {
+      const colEl = document.createElement('div');
+      colEl.className = 'column';
+      colEl.dataset.columnId = col.id;
+      colEl.draggable = true;
+
+      // Header
+      const header = document.createElement('div');
+      header.className = 'column-header';
+      header.innerHTML = `
+        <span class="column-title">${escHtml(col.title)}</span>
+        <span class="column-count">${col.tasks ? col.tasks.length : 0}</span>
+        <div class="column-actions">
+          <button class="btn-icon column-rename-btn" title="Rename">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+          <button class="btn-icon column-delete-btn" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      `;
+
+      // Task list
+      const taskList = document.createElement('div');
+      taskList.className = 'task-list';
+      taskList.dataset.columnId = col.id;
+
+      (col.tasks || []).forEach(task => {
+        const card = createTaskCard(task);
+        taskList.appendChild(card);
+      });
+
+      // Add task button
+      const addBtn = document.createElement('div');
+      addBtn.className = 'add-task-btn';
+      addBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add task
+      `;
+      addBtn.addEventListener('click', () => showCreateTask(col.id));
+
+      colEl.appendChild(header);
+      colEl.appendChild(taskList);
+      colEl.appendChild(addBtn);
+      container.appendChild(colEl);
+
+      // ─── Column DnD ───
+      colEl.addEventListener('dragstart', e => {
+        STATE.draggedColumn = col.id;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => colEl.classList.add('dragging'), 0);
+      });
+      colEl.addEventListener('dragend', () => {
+        colEl.classList.remove('dragging');
+        STATE.draggedColumn = null;
+        $$('.column.drag-over').forEach(el => el.classList.remove('drag-over'));
+      });
+      colEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!STATE.draggedColumn) return;
+        colEl.classList.add('drag-over');
+      });
+      colEl.addEventListener('dragleave', () => colEl.classList.remove('drag-over'));
+      colEl.addEventListener('drop', e => {
+        e.preventDefault();
+        colEl.classList.remove('drag-over');
+        if (!STATE.draggedColumn || STATE.draggedColumn === col.id) return;
+        // Reorder columns
+        const fromIdx = STATE.columns.findIndex(c => c.id === STATE.draggedColumn);
+        const toIdx = STATE.columns.findIndex(c => c.id === col.id);
+        if (fromIdx === -1 || toIdx === -1) return;
+
+        // Snapshot old positions to detect what changed
+        const oldPositions = {};
+        STATE.columns.forEach(c => { oldPositions[c.id] = c.position; });
+
+        // Optimistic reorder
+        const [moved] = STATE.columns.splice(fromIdx, 1);
+        STATE.columns.splice(toIdx, 0, moved);
+        STATE.columns.forEach((c, i) => c.position = i);
+        renderColumns();
+
+        // Send only affected columns (those whose position changed)
+        const affected = STATE.columns
+          .filter(c => oldPositions[c.id] !== c.position)
+          .map(c => ({ boardColumnId: c.id, position: c.position }));
+        if (affected.length) moveColumn(affected).then(res => {
+          if (!res.ok) toast('Failed to reorder column', 'error');
+        });
+      });
+
+      // ─── Task List DnD ───
+      taskList.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!STATE.draggedTask) return;
+        taskList.classList.add('drag-over');
+
+        const afterElement = getDragAfterElement(taskList, e.clientY);
+        $$('.task-card.drag-over-top, .task-card.drag-over-bottom', taskList).forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        if (afterElement) {
+          afterElement.classList.add('drag-over-top');
+        } else {
+          const last = taskList.querySelector('.task-card:last-child');
+          if (last) last.classList.add('drag-over-bottom');
+        }
+      });
+      taskList.addEventListener('dragleave', () => {
+        taskList.classList.remove('drag-over');
+        $$('.task-card.drag-over-top, .task-card.drag-over-bottom', taskList).forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+      });
+      taskList.addEventListener('drop', e => {
+        e.preventDefault();
+        taskList.classList.remove('drag-over');
+        $$('.task-card.drag-over-top, .task-card.drag-over-bottom', taskList).forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        if (!STATE.draggedTask) return;
+
+        const taskId = STATE.draggedTask;
+        const fromColId = STATE.dragSourceColumnId;
+        const toColId = col.id;
+
+        const fromCol = STATE.columns.find(c => c.id === fromColId);
+        const toCol = STATE.columns.find(c => c.id === toColId);
+        if (!fromCol || !toCol) return;
+
+        const taskIdx = fromCol.tasks.findIndex(t => t.id === taskId);
+        if (taskIdx === -1) return;
+
+        const afterElement = getDragAfterElement(taskList, e.clientY);
+        let toIndex;
+        if (afterElement) {
+          toIndex = [...taskList.children].indexOf(afterElement);
+        } else {
+          toIndex = toCol.tasks.length;
+        }
+
+        // Optimistic update
+        const [movedTask] = fromCol.tasks.splice(taskIdx, 1);
+        movedTask.boardColumnId = toColId;
+
+        // Snapshot old positions before reassigning
+        const affectedCols = STATE.columns.filter(c => c.id === fromColId || c.id === toColId);
+        const oldPositions = {};
+        affectedCols.forEach(c => c.tasks.forEach(t => { oldPositions[t.id] = t.position; }));
+
+        toCol.tasks.splice(toIndex, 0, movedTask);
+        toCol.tasks.forEach((t, i) => t.position = i);
+        if (fromColId !== toColId) fromCol.tasks.forEach((t, i) => t.position = i);
+        renderColumns();
+
+        // Send only tasks whose position changed
+        const taskList = [];
+        affectedCols.forEach(c => c.tasks.forEach(t => {
+          if (oldPositions[t.id] !== t.position) taskList.push({ taskId: t.id, position: t.position });
+        }));
+        moveTask({ tasks: taskList }).then(res => {
+          if (!res.ok) {
+            toast('Failed to move task', 'error');
+            loadColumns(); // revert
+          }
+        });
+      });
+
+      // ─── Rename Column ───
+      header.querySelector('.column-rename-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        const titleEl = header.querySelector('.column-title');
+        const current = col.title;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'column-title-edit';
+        input.value = current;
+        titleEl.replaceWith(input);
+        input.focus();
+        input.select();
+        const finish = async () => {
+          const val = input.value.trim();
+          if (val && val !== current) {
+            // Optimistic
+            col.title = val;
+            renderColumns();
+            const res = await updateColumn(col.id, { title: val });
+            if (!res.ok) { col.title = current; renderColumns(); toast('Failed to rename column', 'error'); }
+          } else {
+            renderColumns();
+          }
+        };
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { col.title = current; renderColumns(); } });
+      });
+
+      // ─── Delete Column ───
+      header.querySelector('.column-delete-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        showConfirm(
+          `Delete "${col.title}"?`,
+          `This will delete the column and all ${col.tasks.length} tasks inside it.`,
+          async () => {
+            STATE.columns = STATE.columns.filter(c => c.id !== col.id);
+            renderColumns();
+            const res = await deleteColumn(col.id);
+            if (!res.ok) { toast('Failed to delete column', 'error'); loadColumns(); }
+          }
+        );
+      });
+    });
+
+    // Add column button
+    const addColBtn = document.createElement('div');
+    addColBtn.className = 'add-column-btn';
+    addColBtn.id = 'add-column-btn';
+    addColBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add column
+    `;
+    addColBtn.addEventListener('click', () => showAddColumnInline());
+    container.appendChild(addColBtn);
+  }
+
+  function createTaskCard(task) {
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    card.dataset.taskId = task.id;
+    card.draggable = true;
+
+    const pColor = priorityColor(task.priority);
+
+    card.innerHTML = `
+      <div class="task-priority-bar" style="background:${pColor}"></div>
+      <div class="task-title">${escHtml(task.title)}</div>
+      <div class="task-meta-row">
+        <span class="task-priority ${task.priority || 'medium'}">${task.priority || 'medium'}</span>
+        ${task.dueDate ? `<span class="task-due${isUrgent(task.dueDate) ? ' urgent' : ''}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${formatDate(task.dueDate)}
+        </span>` : ''}
+      </div>
+      <div class="task-footer">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="task-check${task.status === 'done' ? ' done' : ''}" data-task-id="${task.id}"></div>
+          ${task.commentCount > 0 ? `<span class="task-comments">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            ${task.commentCount}
+          </span>` : ''}
+        </div>
+        ${task.assignee ? `<img class="task-assignee" src="${task.assignee.avatarUrl || ''}" alt="${task.assignee.name}" title="${task.assignee.name}" />` : ''}
+      </div>
+    `;
+
+    // ─── Task DnD ───
+    card.addEventListener('dragstart', e => {
+      STATE.draggedTask = task.id;
+      STATE.dragSourceColumnId = task.boardColumnId;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', task.id);
+      setTimeout(() => card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      STATE.draggedTask = null;
+      STATE.dragSourceColumnId = null;
+      $$('.task-card.drag-over-top, .task-card.drag-over-bottom').forEach(el => el.classList.remove('drag-over-top', 'drag-over-bottom'));
+      $$('.task-list.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    // ─── Click to Edit ───
+    card.addEventListener('click', e => {
+      if (e.target.closest('.task-check')) return;
+      openTaskModal(task.id);
+    });
+
+    // ─── Check toggle ───
+    const check = card.querySelector('.task-check');
+    check.addEventListener('click', async e => {
+      e.stopPropagation();
+      const newStatus = task.status === 'done' ? 'todo' : 'done';
+      // Optimistic
+      task.status = newStatus;
+      renderColumns();
+      const res = await updateTaskStatus(task.id, newStatus);
+      if (!res.ok) { task.status = newStatus === 'done' ? 'todo' : 'done'; renderColumns(); }
+    });
+
+    return card;
+  }
+
+  function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.task-card:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: child };
+      }
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  // ─── Add Column Inline ───
+
+  function showAddColumnInline() {
+    const btn = document.getElementById('add-column-btn');
+    if (!btn) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'add-column-inline';
+    wrapper.innerHTML = `
+      <input type="text" placeholder="Column title..." id="inline-col-input" />
+      <div class="inline-actions">
+        <button class="save" id="inline-col-save">Add</button>
+        <button class="cancel" id="inline-col-cancel">Cancel</button>
+      </div>
+    `;
+    btn.replaceWith(wrapper);
+    const input = wrapper.querySelector('input');
+    input.focus();
+
+    const cleanup = () => {
+      const newBtn = document.createElement('div');
+      newBtn.className = 'add-column-btn';
+      newBtn.id = 'add-column-btn';
+      newBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add column
+      `;
+      newBtn.addEventListener('click', showAddColumnInline);
+      wrapper.replaceWith(newBtn);
+    };
+
+    wrapper.querySelector('#inline-col-cancel').addEventListener('click', cleanup);
+    wrapper.querySelector('#inline-col-save').addEventListener('click', async () => {
+      const title = input.value.trim();
+      if (!title) return;
+      const pos = STATE.columns.length;
+      wrapper.querySelector('.save').disabled = true;
+
+      // Optimistic
+      const tempId = -Date.now();
+      const newCol = { id: tempId, title, position: pos, tasks: [] };
+      STATE.columns.push(newCol);
+      renderColumns();
+      toast('Creating column...', 'info');
+
+      const res = await createColumn({ title, position: pos });
+      if (res.ok) {
+        // Replace temp with real
+        const idx = STATE.columns.findIndex(c => c.id === tempId);
+        if (idx !== -1) STATE.columns[idx] = { ...res.data, tasks: [] };
+        renderColumns();
+        toast(`Column "${title}" created`, 'success');
+      } else {
+        STATE.columns = STATE.columns.filter(c => c.id !== tempId);
+        renderColumns();
+        toast('Failed to create column', 'error');
+      }
+      cleanup();
+    });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') wrapper.querySelector('#inline-col-save').click();
+      if (e.key === 'Escape') cleanup();
+    });
+  }
+
+  // ─── Create Task Modal ───
+
+  function showCreateTask(columnId) {
+    const modal = document.getElementById('create-task-modal');
+    document.getElementById('create-task-title').value = '';
+    document.getElementById('create-task-description').value = '';
+    document.getElementById('create-task-priority').value = 'medium';
+    document.getElementById('create-task-duedate').value = '';
+    modal.dataset.columnId = columnId;
+    populateAssigneeSelect('create-task-assignee');
+    modal.classList.add('open');
+    document.getElementById('create-task-title').focus();
+  }
+
+  document.getElementById('create-task-cancel').addEventListener('click', () => {
+    document.getElementById('create-task-modal').classList.remove('open');
+  });
+
+  document.getElementById('create-task-save').addEventListener('click', async () => {
+    const title = document.getElementById('create-task-title').value.trim();
+    if (!title) { toast('Task title is required', 'error'); return; }
+
+    const columnId = parseInt(document.getElementById('create-task-modal').dataset.columnId);
+    const data = {
+      title,
+      description: document.getElementById('create-task-description').value.trim(),
+      priority: document.getElementById('create-task-priority').value,
+      dueDate: document.getElementById('create-task-duedate').value || null,
+      assigneeId: parseInt(document.getElementById('create-task-assignee').value) || null,
+      boardColumnId: columnId,
+    };
+
+    document.getElementById('create-task-save').disabled = true;
+
+    // Optimistic
+    const tempId = -Date.now();
+    const col = STATE.columns.find(c => c.id === columnId);
+    const tempTask = {
+      id: tempId,
+      title,
+      priority: data.priority,
+      assignee: data.assigneeId ? STATE.members.find(m => m.id === data.assigneeId) || null : null,
+      dueDate: data.dueDate,
+      boardColumnId: columnId,
+      position: col ? col.tasks.length : 0,
+      status: 'todo',
+      commentCount: 0,
+    };
+    if (col) col.tasks.push(tempTask);
+    renderColumns();
+
+    document.getElementById('create-task-modal').classList.remove('open');
+    toast('Creating task...', 'info');
+
+    const res = await createTask(data);
+    if (res.ok) {
+      if (col) {
+        const idx = col.tasks.findIndex(t => t.id === tempId);
+        if (idx !== -1) col.tasks[idx] = res.data;
+      }
+      renderColumns();
+      toast(`Task "${title}" created`, 'success');
+    } else {
+      if (col) col.tasks = col.tasks.filter(t => t.id !== tempId);
+      renderColumns();
+      toast('Failed to create task', 'error');
+    }
+    document.getElementById('create-task-save').disabled = false;
+  });
+
+  // ─── Task Detail Modal ───
+
+  function openTaskModal(taskId) {
+    let task = null;
+    let col = null;
+    for (const c of STATE.columns) {
+      const found = c.tasks.find(t => t.id === taskId);
+      if (found) { task = found; col = c; break; }
+    }
+    if (!task) return;
+
+    STATE.currentTaskId = taskId;
+    document.getElementById('task-modal-title').textContent = 'Edit Task';
+    document.getElementById('task-edit-title').value = task.title;
+    document.getElementById('task-edit-description').value = task.description || '';
+    document.getElementById('task-edit-priority').value = task.priority || 'medium';
+    document.getElementById('task-edit-duedate').value = task.dueDate ? task.dueDate.slice(0, 10) : '';
+
+    populateAssigneeSelect('task-edit-assignee', task.assignee?.id);
+    populateColumnSelect('task-edit-column', task.boardColumnId);
+
+    document.getElementById('task-modal').classList.add('open');
+  }
+
+  document.getElementById('task-modal-cancel').addEventListener('click', () => {
+    document.getElementById('task-modal').classList.remove('open');
+  });
+
+  document.getElementById('task-modal-save').addEventListener('click', async () => {
+    const id = STATE.currentTaskId;
+    const title = document.getElementById('task-edit-title').value.trim();
+    if (!title) { toast('Title is required', 'error'); return; }
+
+    const data = {
+      title,
+      description: document.getElementById('task-edit-description').value,
+      priority: document.getElementById('task-edit-priority').value,
+      dueDate: document.getElementById('task-edit-duedate').value || null,
+      assigneeId: parseInt(document.getElementById('task-edit-assignee').value) || null,
+      boardColumnId: parseInt(document.getElementById('task-edit-column').value),
+    };
+
+    // Optimistic
+    for (const c of STATE.columns) {
+      const t = c.tasks.find(t => t.id === id);
+      if (t) {
+        if (data.boardColumnId !== t.boardColumnId) {
+          // Move to different column
+          const fromCol = STATE.columns.find(col => col.id === t.boardColumnId);
+          const toCol = STATE.columns.find(col => col.id === data.boardColumnId);
+          if (fromCol && toCol) {
+            fromCol.tasks = fromCol.tasks.filter(x => x.id !== id);
+            t.boardColumnId = data.boardColumnId;
+            t.position = toCol.tasks.length;
+            toCol.tasks.push(t);
+          }
+        }
+        t.title = data.title;
+        t.description = data.description;
+        t.priority = data.priority;
+        t.dueDate = data.dueDate;
+        t.assignee = data.assigneeId ? STATE.members.find(m => m.id === data.assigneeId) || t.assignee : null;
+        break;
+      }
+    }
+    renderColumns();
+    document.getElementById('task-modal').classList.remove('open');
+    toast('Saving...', 'info');
+
+    const res = await updateTask(id, data);
+    if (!res.ok) {
+      toast('Failed to update task', 'error');
+      loadColumns();
+    } else {
+      toast('Task updated', 'success');
+    }
+  });
+
+  document.getElementById('task-modal-delete').addEventListener('click', () => {
+    const id = STATE.currentTaskId;
+    document.getElementById('task-modal').classList.remove('open');
+    let title = '';
+    for (const c of STATE.columns) {
+      const t = c.tasks.find(t => t.id === id);
+      if (t) { title = t.title; break; }
+    }
+    showConfirm(
+      `Delete "${title}"?`,
+      'This action cannot be undone.',
+      async () => {
+        for (const c of STATE.columns) {
+          c.tasks = c.tasks.filter(t => t.id !== id);
+        }
+        renderColumns();
+        const res = await deleteTaskApi(id);
+        if (!res.ok) { toast('Failed to delete task', 'error'); loadColumns(); }
+        else toast('Task deleted', 'info');
+      }
+    );
+  });
+
+  // ─── Modals: close on overlay click ───
+
+  $$('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  // ─── Confirm Dialog ───
+
+  let confirmCallback = null;
+
+  function showConfirm(title, message, onOk) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    confirmCallback = onOk;
+    document.getElementById('confirm-dialog').classList.add('open');
+  }
+
+  document.getElementById('confirm-cancel').addEventListener('click', () => {
+    document.getElementById('confirm-dialog').classList.remove('open');
+    confirmCallback = null;
+  });
+
+  document.getElementById('confirm-ok').addEventListener('click', () => {
+    document.getElementById('confirm-dialog').classList.remove('open');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  });
+
+  // ─── Helpers ────────────────────────────────────────────────────────
+
+  function populateAssigneeSelect(id, selectedId) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">Unassigned</option>';
+    STATE.members.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      if (m.id === selectedId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function populateColumnSelect(id, selectedId) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    STATE.columns.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.title;
+      if (c.id === selectedId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderActivity() {
+    const list = document.getElementById('sidebar-activity-list');
+    if (!STATE.activities.length) {
+      list.innerHTML = '<div class="empty-state"><p>No activity yet</p></div>';
+      return;
+    }
+    list.innerHTML = STATE.activities.slice(0, 30).map(a => `
+      <div class="activity-item">
+        <img class="activity-avatar" src="${a.user?.avatarUrl || ''}" alt="${a.user?.name || 'User'}" />
+        <div class="activity-body">
+          <div class="activity-text">${a.message || a.type || ''}</div>
+          <div class="activity-time">${timeAgo(a.timestamp)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderOnlineUsers() {
+    const list = document.getElementById('sidebar-online-list');
+    const count = document.getElementById('sidebar-online-count');
+
+    // Also render top bar avatars
+    const topbarMembers = document.getElementById('topbar-members');
+    topbarMembers.innerHTML = '';
+
+    count.textContent = STATE.onlineUsers.length;
+
+    if (!STATE.onlineUsers.length) {
+      list.innerHTML = '<div class="empty-state" style="padding:12px 0"><p>No one online</p></div>';
+      return;
+    }
+
+    list.innerHTML = STATE.onlineUsers.map(u => `
+      <div class="sidebar-online-user">
+        <img src="${u.avatarUrl || ''}" alt="${u.name}" />
+        <span class="name">${u.name}</span>
+        <span class="dot ${u.status || 'online'}"></span>
+      </div>
+    `).join('');
+
+    // Top bar stacked avatars (max 5 visible + more count)
+    const maxVisible = 5;
+    const avatarStack = document.createElement('div');
+    avatarStack.className = 'avatar-stack';
+    STATE.onlineUsers.slice(0, maxVisible).forEach(u => {
+      const img = document.createElement('img');
+      img.src = u.avatarUrl || '';
+      img.alt = u.name;
+      img.title = u.name;
+      img.onerror = function() { this.src = ''; this.style.background = 'var(--surface-hover)'; this.style.display = 'flex'; };
+      avatarStack.appendChild(img);
+    });
+    if (STATE.onlineUsers.length > maxVisible) {
+      const more = document.createElement('div');
+      more.className = 'more-count';
+      more.textContent = `+${STATE.onlineUsers.length - maxVisible}`;
+      avatarStack.appendChild(more);
+    }
+    topbarMembers.appendChild(avatarStack);
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ─── Sidebar Toggle ───
+
+  let sidebarOpen = true;
+
+  document.getElementById('toggle-sidebar-btn').addEventListener('click', () => {
+    sidebarOpen = !sidebarOpen;
+    document.getElementById('activity-sidebar').classList.toggle('collapsed', !sidebarOpen);
+  });
+
+  document.getElementById('close-sidebar-btn').addEventListener('click', () => {
+    sidebarOpen = false;
+    document.getElementById('activity-sidebar').classList.add('collapsed');
+  });
+
+  // ─── Board Name Inline Edit ───
+
+  const boardNameInput = document.getElementById('board-name-input');
+  let boardNameTimeout;
+
+  boardNameInput.addEventListener('input', () => {
+    document.getElementById('board-title-display').textContent = boardNameInput.value;
+    clearTimeout(boardNameTimeout);
+    boardNameTimeout = setTimeout(async () => {
+      const val = boardNameInput.value.trim();
+      if (val && val !== boardNameInput.dataset.originalTitle) {
+        const res = await updateBoard({ title: val });
+        if (res) {
+          boardNameInput.dataset.originalTitle = val;
+          document.title = `${val} — CollabHub`;
+          toast('Board renamed', 'success');
+        }
+      }
+    }, 600);
+  });
+
+  boardNameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') boardNameInput.blur();
+    if (e.key === 'Escape') { boardNameInput.value = boardNameInput.dataset.originalTitle; boardNameInput.blur(); }
+  });
+
+  // ─── Cursor tracking ───
+
+  const boardArea = document.getElementById('board-area');
+  let cursorThrottle = null;
+
+  boardArea.addEventListener('mousemove', e => {
+    if (cursorThrottle) return;
+    cursorThrottle = setTimeout(() => {
+      cursorThrottle = null;
+      sendWsCursor(e.clientX, e.clientY);
+    }, 50);
+  });
+
+  // ─── Init ───────────────────────────────────────────────────────────
+
+  async function init() {
+    if (!BOARD_ID) {
+      showBoardError('No board ID specified');
+      return;
+    }
+
+    // Show skeleton
+    const container = document.getElementById('columns-container');
+    container.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+      const skel = document.createElement('div');
+      skel.className = 'skeleton skeleton-column';
+      skel.innerHTML = '<div class="skeleton skeleton-h skeleton-w-60"></div>'.repeat(5);
+      container.appendChild(skel);
+    }
+
+    await loadBoard();
+    await loadColumns();
+    await loadActivity();
+    await loadOnlineUsers();
+    await loadWorkspaceMembers();
+
+    connectWs();
+  }
+
+  init();
+
+  // ─── Periodic refresh ───
+  setInterval(() => {
+    // Refresh activity and online users every 30s
+    loadActivity();
+    loadOnlineUsers();
+  }, 30000);
+
+  /* ===================================================================
+   *  SUMMARY OF API ENDPOINTS THE FRONTEND CALLS
+   *
+   *  Existing endpoints (already in controllers — may need wiring):
+   *  ───────────────────────────────────────────────────────────────────
+   *  1.  GET    /api/boards/{boardId}            — Get board details
+   *  2.  PUT    /api/boards/boards/{id}          — Update board
+   *  3.  POST   /api/tasks                       — Create task
+   *  4.  PUT    /api/tasks/{id}/status           — Toggle task status
+   *  5.  DELETE /api/tasks/{id}                  — Delete task
+   *  6.  GET    /api/activity?workspaceId={id}   — Activity log
+   *  7.  GET    /api/users/online?workspaceId={} — Online users
+   *
+   *  New endpoints needed (not yet in controllers):
+   *  ───────────────────────────────────────────────────────────────────
+   *  8.  GET    /api/boards/{boardId}/columns
+   *       → Returns columns with nested tasks for the board.
+   *       → Response: { "columns": [ { id, title, position, tasks: [...] } ] }
+   *
+   *  9.  POST   /api/boards/{boardId}/columns
+   *       → Creates a new column in the board.
+   *       → Request:  { "title": "str", "position": int }
+   *       → Response: { "id": long, "title": "str", "position": int, "boardId": long }
+   *
+   *  10. PUT    /api/columns/{columnId}
+   *       → Updates column (rename).
+   *       → Request:  { "title": "str" }
+   *       → Response: { "id": long, "title": "str", "position": int }
+   *
+   *  11. DELETE /api/columns/{columnId}
+   *       → Deletes column and its tasks.
+   *       → Response: { "message": "Column deleted" }
+   *
+   *  12. PUT    /api/columns/reorder
+   *       → Reorders all columns after drag-and-drop.
+   *       → Request:  { "columns": [{ "boardColumnId": 3, "position": 0 },
+   *                                  { "boardColumnId": 1, "position": 1 },
+   *                                  { "boardColumnId": 2, "position": 2 }] }
+   *       → Response: { "message": "Columns reordered" }
+   *
+   *  13. PUT    /api/tasks/{taskId}
+   *       → Updates task details (title, desc, priority, assignee, dueDate, column).
+   *       → Request:  { "title": "str", "description": "str", "priority": "str",
+   *                       "assigneeId": long|null, "dueDate": "ISO|null",
+   *                       "boardColumnId": long }
+   *       → Response: full updated task object
+   *
+   *  14. PUT    /api/tasks/reorder
+   *       → Reorders tasks after drag-and-drop.
+   *       → Request:  { "tasks": [{ "taskId": 42, "position": 0 },
+   *                                { "taskId": 7,  "position": 1 }] }
+   *       → Response: { "message": "Tasks reordered" }
+   *
+   *  WebSocket topics:
+   *  ───────────────────────────────────────────────────────────────────
+   *  Subscribe /topic/board/{boardId}
+   *       → Receives { type, payload } messages for all board changes
+   *  Subscribe /topic/board/{boardId}/cursors
+   *       → Receives array of { userId, name, avatarUrl, x, y }
+   *  Send /app/board/{boardId}/cursor
+   *       → Sends cursor position { x, y }
+   *
+   *  NOTE: Task response objects should include a "commentCount" field
+   *  (int) for the comment count badge on cards. The existing
+   *  TaskWorkspaceResponse does not have this field — add it or compute
+   *  via @Formula / @Transient + @Column formula.
+   * =================================================================== */
+</script>
+
+</body>
+</html>

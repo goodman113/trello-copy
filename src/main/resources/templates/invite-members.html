@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:attr="data-workspace-id=${workspaceId},data-user-id=${userId}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invite Members — CollabHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    :root {
+      --bg: #0b0d12;
+      --sidebar: #0e1017;
+      --surface: #12151c;
+      --surface-hover: #1a1d2a;
+      --surface-elevated: #181b26;
+      --border: #1e2231;
+      --border-light: #282d3e;
+      --text: #e2e7f0;
+      --text-secondary: #83899c;
+      --text-muted: #555a6e;
+      --accent: #6366f1;
+      --accent-hover: #5558e6;
+      --accent-dim: rgba(99,102,241,.12);
+      --error: #f87171;
+      --error-dim: rgba(248,113,113,.12);
+      --success: #34d399;
+      --success-dim: rgba(52,211,153,.12);
+      --warning: #fbbf24;
+      --orange: #fb923c;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --radius-lg: 14px;
+      --radius-full: 999px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ─── Modal Overlay ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      animation: modal-in .25s ease;
+      box-shadow: 0 25px 80px rgba(0,0,0,.5);
+    }
+
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(20px) scale(.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ─── Header ─── */
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: -.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-header h2 svg {
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+
+    .modal-close:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .modal-close svg { width: 20px; height: 20px; }
+
+    .modal-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ─── Body (scrollable) ─── */
+    .modal-body {
+      padding: 24px 28px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-body > * + * {
+      margin-top: 28px;
+    }
+
+    /* ─── Search / Invite Section ─── */
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-wrap .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 11px 14px 11px 44px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .search-wrap input::placeholder { color: var(--text-muted); }
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+
+    /* ─── Search Results Dropdown ─── */
+    .search-results {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      max-height: 240px;
+      overflow-y: auto;
+      z-index: 50;
+      display: none;
+      box-shadow: 0 12px 40px rgba(0,0,0,.4);
+    }
+
+    .search-results.open { display: block; }
+
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background .1s;
+    }
+
+    .search-result-item:hover { background: var(--surface-hover); }
+    .search-result-item + .search-result-item { border-top: 1px solid var(--border); }
+
+    .search-result-item .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface-hover);
+    }
+
+    .search-result-item .avatar-placeholder {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .search-result-info { flex: 1; min-width: 0; }
+
+    .search-result-info .name {
+      font-size: 14px;
+      font-weight: 550;
+      color: var(--text);
+    }
+
+    .search-result-info .email {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .search-result-status {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      white-space: nowrap;
+    }
+
+    .search-result-status.member { background: var(--accent-dim); color: var(--accent); }
+    .search-result-status.invited { background: var(--warning); color: #000; }
+    .search-result-status.unavailable { background: var(--error-dim); color: var(--error); }
+
+    .search-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .search-loading {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Invite selected user row ─── */
+    .invite-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 10px;
+    }
+
+    .invite-row .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface-hover);
+    }
+
+    .invite-row .avatar-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .invite-row-info { flex: 1; min-width: 0; }
+
+    .invite-row-info .name {
+      font-size: 14px;
+      font-weight: 550;
+      color: var(--text);
+    }
+
+    .invite-row-info .email {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .role-select {
+      padding: 7px 32px 7px 12px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2383899c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color .2s;
+    }
+
+    .role-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+
+    .btn-send-invite {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      white-space: nowrap;
+    }
+
+    .btn-send-invite:hover { background: var(--accent-hover); }
+    .btn-send-invite:active { transform: scale(.97); }
+    .btn-send-invite:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .btn-send-invite svg { width: 16px; height: 16px; }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+
+    .btn-icon:hover { background: var(--surface-hover); color: var(--text); }
+    .btn-icon.danger:hover { background: var(--error-dim); color: var(--error); }
+    .btn-icon svg { width: 18px; height: 18px; }
+
+    /* ─── Divider ─── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0;
+    }
+
+    /* ─── Pending Invites ─── */
+    .invite-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+    }
+
+    .invite-item + .invite-item { border-top: 1px solid var(--border); }
+
+    .invite-item .pending-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: var(--warning);
+      color: #000;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .invite-item-info { flex: 1; min-width: 0; }
+
+    .invite-item-info .email {
+      font-size: 14px;
+      font-weight: 550;
+      color: var(--text);
+    }
+
+    .invite-item-info .meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .role-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    .role-badge.owner { background: rgba(251,191,36,.15); color: var(--warning); }
+    .role-badge.editor { background: var(--accent-dim); color: var(--accent); }
+    .role-badge.viewer { background: rgba(52,211,153,.15); color: var(--success); }
+
+    .pending-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: rgba(251,191,36,.12);
+      color: var(--warning);
+    }
+
+    /* ─── Team Members ─── */
+    .member-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+    }
+
+    .member-item + .member-item { border-top: 1px solid var(--border); }
+
+    .member-item .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface-hover);
+    }
+
+    .member-item .avatar-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .member-info { flex: 1; min-width: 0; }
+
+    .member-info .name {
+      font-size: 14px;
+      font-weight: 550;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .member-info .name .owner-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      background: rgba(251,191,36,.15);
+      color: var(--warning);
+    }
+
+    .member-info .email {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .member-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ─── Footer ─── */
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 16px 28px 20px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .btn-secondary {
+      padding: 8px 20px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-light);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      padding: 8px 20px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 550;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    /* ─── Toast ─── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      animation: toast-in .25s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+
+    .toast.success { background: rgba(52,211,153,.15); border: 1px solid rgba(52,211,153,.3); color: var(--success); }
+    .toast.error { background: rgba(248,113,113,.15); border: 1px solid rgba(248,113,113,.3); color: var(--error); }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .toast-out {
+      animation: toast-out .2s ease forwards;
+    }
+
+    @keyframes toast-out {
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+
+    /* ─── Empty State ─── */
+    .empty-state {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .empty-state svg {
+      width: 32px;
+      height: 32px;
+      margin-bottom: 8px;
+      opacity: .4;
+    }
+
+    /* ─── Skeleton ─── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skeleton-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+    }
+
+    .skeleton-row + .skeleton-row { border-top: 1px solid var(--border); }
+
+    .skeleton-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .skeleton-line {
+      height: 14px;
+      border-radius: 4px;
+      flex: 1;
+    }
+
+    .skeleton-line.short { max-width: 120px; }
+    .skeleton-line.mid { max-width: 200px; }
+  </style>
+</head>
+<body>
+
+<!-- ─── Modal ─── -->
+<div class="modal-overlay" id="invite-modal">
+  <div class="modal">
+    <!-- Header -->
+    <div class="modal-header">
+      <div>
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Invite Members
+        </h2>
+        <div class="modal-subtitle" id="workspace-name-display">Loading workspace...</div>
+      </div>
+      <button class="modal-close" id="modal-close" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- ─── Search ─── -->
+      <div>
+        <div class="section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Search people by email or name
+        </div>
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="e.g. jane@company.com or Jane Cooper" autocomplete="off" />
+          <div class="search-results" id="search-results"></div>
+        </div>
+        <!-- Selected user to invite (appears after clicking a result) -->
+        <div id="invite-row-container"></div>
+      </div>
+
+      <!-- ─── Pending Invites ─── -->
+      <div>
+        <div class="section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Pending Invites
+          <span class="pending-badge" id="pending-count" style="display:none">0</span>
+        </div>
+        <div id="pending-list"><div class="empty-state">No pending invitations</div></div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- ─── Team Members ─── -->
+      <div>
+        <div class="section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Team Members
+          <span style="font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0" id="member-count"></span>
+        </div>
+        <div id="member-list"></div>
+      </div>
+
+
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast Container ─── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  /* ==================================================================
+   *  INVITE MEMBERS MODAL — JavaScript
+   *
+   *  All API endpoints that the frontend calls are documented below.
+   *  Create these endpoints on your backend to make the modal work.
+   * ================================================================== */
+
+  // ─── Config ───
+  const WORKSPACE_ID = document.documentElement.dataset.workspaceId;
+
+  // ─── Utils ───
+
+  function $(sel, ctx = document) { return ctx.querySelector(sel); }
+
+  function $$(sel, ctx = document) { return [...ctx.querySelectorAll(sel)]; }
+
+  function api(path, options = {}) {
+    return fetch(path, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+    }).then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })));
+  }
+
+  function showToast(msg, type = 'success') {
+    const container = $('#toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    container.appendChild(t);
+    setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 200); }, 2800);
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  function debounce(fn, ms = 300) {
+    let tm; return (...a) => { clearTimeout(tm); tm = setTimeout(() => fn(...a), ms); };
+  }
+
+  // ─── State ───
+  let selectedUser = null;
+  let searchTimeout = null;
+
+  // ─── Load Workspace Name ───
+
+  /* ==================================================================
+   *  GET /api/workspaces
+   *
+   *  What it does:
+   *    Returns all workspaces the current user has access to.
+   *
+   *  Frontend sends:
+   *    Nothing (just auth cookie/header)
+   *
+   *  Frontend expects (200):
+   *    {
+   *      "workspaces": [
+   *        {
+   *          "id": 1,
+   *          "name": "Team Alpha",
+   *          "description": "...",
+   *          "boardCount": 5,
+   *          "memberCount": 8,
+   *          "color": "#6366f1"
+   *        }
+   *      ]
+   *    }
+   *
+   *  Error: 401 Unauthorized, 403 Forbidden
+   * ================================================================== */
+
+  async function loadWorkspaceName() {
+    const res = await api('/api/workspaces');
+    if (res.ok && res.data.workspaces) {
+      const ws = res.data.workspaces.find(w => w.id == WORKSPACE_ID);
+      if (ws) {
+        $('#workspace-name-display').textContent = ws.name;
+      }
+    }
+  }
+
+  // ─── Search Users ───
+
+  /* ==================================================================
+   *  GET /api/workspaces/{workspaceId}/users/search?q={query}
+   *
+   *  What it does:
+   *    Searches registered users by email, username, or full name.
+   *    Returns users that match, with flags indicating if they are
+   *    already a member or already have a pending invitation.
+   *    Excludes the workspace owner from results.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long)
+   *    Query: q (String) — partial email/name/username
+   *
+   *  Frontend expects (200):
+   *    {
+   *      "users": [
+   *        {
+   *          "id": 3,
+   *          "email": "jane@company.com",
+   *          "username": "jane_doe",
+   *          "fullName": "Jane Doe",
+   *          "avatarUrl": "https://...",
+   *          "alreadyMember": false,
+   *          "alreadyInvited": false
+   *        }
+   *      ]
+   *    }
+   *
+   *  Error: 400 Bad Request (empty query), 404 workspace not found
+   * ================================================================== */
+
+  async function searchUsers(query) {
+    if (!query || query.length < 2) {
+      $('#search-results').classList.remove('open');
+      return;
+    }
+
+    const resultsEl = $('#search-results');
+    resultsEl.innerHTML = '<div class="search-loading"><div class="spinner"></div> Searching...</div>';
+    resultsEl.classList.add('open');
+
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/users/search?q=${encodeURIComponent(query)}`);
+
+    if (!res.ok) {
+      resultsEl.innerHTML = '<div class="search-empty">Search failed. Try again.</div>';
+      return;
+    }
+
+    const users = res.data.users || [];
+
+    if (users.length === 0) {
+      resultsEl.innerHTML = '<div class="search-empty">No users found matching that query</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = users.map(u => {
+      let statusHtml = '';
+      let disabled = false;
+
+      if (u.alreadyMember) {
+        statusHtml = '<span class="search-result-status member">Member</span>';
+        disabled = true;
+      } else if (u.alreadyInvited) {
+        statusHtml = '<span class="search-result-status invited">Invited</span>';
+        disabled = true;
+      }
+
+      const avatarHtml = u.avatarUrl
+        ? `<img class="avatar" src="${u.avatarUrl}" alt="" />`
+        : `<div class="avatar-placeholder">${getInitials(u.fullName || u.username)}</div>`;
+
+      return `
+        <div class="search-result-item" data-user='${JSON.stringify(u).replace(/'/g, "&#39;")}'>
+          ${avatarHtml}
+          <div class="search-result-info">
+            <div class="name">${u.fullName || u.username}</div>
+            <div class="email">${u.email}</div>
+          </div>
+          ${statusHtml}
+        </div>
+      `;
+    }).join('');
+
+    // Click handler for results
+    $$('.search-result-item', resultsEl).forEach(el => {
+      el.addEventListener('click', () => {
+        const user = JSON.parse(el.dataset.user);
+        if (user.alreadyMember || user.alreadyInvited) return;
+        selectUser(user);
+        resultsEl.classList.remove('open');
+      });
+    });
+  }
+
+  const debouncedSearch = debounce(searchUsers, 350);
+
+  // ─── Select User (show invite row) ───
+
+  function selectUser(user) {
+    selectedUser = user;
+    $('#search-input').value = '';
+    renderInviteRow();
+  }
+
+  function renderInviteRow() {
+    const container = $('#invite-row-container');
+    if (!selectedUser) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const u = selectedUser;
+    const avatarHtml = u.avatarUrl
+      ? `<img class="avatar" src="${u.avatarUrl}" alt="" />`
+      : `<div class="avatar-placeholder">${getInitials(u.fullName || u.username)}</div>`;
+
+    container.innerHTML = `
+      <div class="invite-row">
+        ${avatarHtml}
+        <div class="invite-row-info">
+          <div class="name">${u.fullName || u.username}</div>
+          <div class="email">${u.email}</div>
+        </div>
+        <select class="role-select" id="invite-role-select">
+          <option value="EDITOR">Editor</option>
+          <option value="VIEWER" selected>Viewer</option>
+        </select>
+        <button class="btn-send-invite" id="btn-send-invite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Invite
+        </button>
+        <button class="btn-icon danger" id="btn-cancel-select" title="Cancel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `;
+
+    $('#btn-cancel-select').addEventListener('click', () => {
+      selectedUser = null;
+      renderInviteRow();
+    });
+
+    $('#btn-send-invite').addEventListener('click', sendInvite);
+  }
+
+  // ─── Send Invite ───
+
+  /* ==================================================================
+   *  POST /api/workspaces/{workspaceId}/invitations
+   *
+   *  What it does:
+   *    Creates a new invitation for the given email with the specified role.
+   *    If the email belongs to a registered user, they will see the invite.
+   *    If not registered, they can accept via invite link.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long)
+   *    Body: { "email": "jane@company.com", "role": "EDITOR" }
+   *      role enum: "OWNER", "EDITOR", "VIEWER"
+   *
+   *  Frontend expects (201):
+   *    {
+   *      "id": 12,
+   *      "workspaceId": 1,
+   *      "inviterId": 2,
+   *      "inviterName": "John",
+   *      "inviterAvatarUrl": "https://...",
+   *      "inviteeEmail": "jane@company.com",
+   *      "role": "EDITOR",
+   *      "status": "PENDING",
+   *      "createdAt": "2026-06-26T10:30:00"
+   *    }
+   *
+   *  Error codes:
+   *    400 — Email is required / Invalid role
+   *    409 — User is already a member or already invited
+   *    404 — Workspace not found
+   *    403 — Only workspace owner or editor can invite
+   * ================================================================== */
+
+  async function sendInvite() {
+    if (!selectedUser) return;
+
+    const role = $('#invite-role-select').value;
+    const btn = $('#btn-send-invite');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify({ email: selectedUser.email, role }),
+    });
+
+    if (res.ok) {
+      showToast(`Invitation sent to ${selectedUser.email}`, 'success');
+      selectedUser = null;
+      renderInviteRow();
+      await loadPendingInvites();
+      await loadMembers();
+    } else {
+      showToast(res.data.message || 'Failed to send invitation', 'error');
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Invite`;
+    }
+  }
+
+  // ─── Load Pending Invites ───
+
+  /* ==================================================================
+   *  GET /api/workspaces/{workspaceId}/invitations
+   *
+   *  What it does:
+   *    Returns all pending (unaccepted) invitations for the workspace.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long)
+   *
+   *  Frontend expects (200):
+   *    {
+   *      "invitations": [
+   *        {
+   *          "id": 12,
+   *          "workspaceId": 1,
+   *          "inviterId": 2,
+   *          "inviterName": "John",
+   *          "inviterAvatarUrl": "https://...",
+   *          "inviteeEmail": "jane@company.com",
+   *          "role": "EDITOR",
+   *          "status": "PENDING",
+   *          "createdAt": "2026-06-26T10:30:00"
+   *        }
+   *      ]
+   *    }
+   *
+   *  Error: 404 workspace not found, 403 forbidden
+   * ================================================================== */
+
+  async function loadPendingInvites() {
+    const listEl = $('#pending-list');
+    const countEl = $('#pending-count');
+
+    listEl.innerHTML = `
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line mid"></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line mid"></div></div>
+    `;
+
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/invitations`);
+
+    if (!res.ok) {
+      listEl.innerHTML = '<div class="empty-state">Failed to load invitations</div>';
+      return;
+    }
+
+    const invites = res.data.invitations || [];
+
+    if (invites.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No pending invitations</div>';
+      countEl.style.display = 'none';
+      return;
+    }
+
+    countEl.textContent = invites.length;
+    countEl.style.display = 'inline';
+
+    const roleLabels = { OWNER: 'Owner', EDITOR: 'Editor', VIEWER: 'Viewer' };
+
+    listEl.innerHTML = invites.map(inv => `
+      <div class="invite-item" data-id="${inv.id}">
+        <div class="pending-avatar">${getInitials(inv.inviteeEmail)}</div>
+        <div class="invite-item-info">
+          <div class="email">${inv.inviteeEmail}</div>
+          <div class="meta">
+            <span class="role-badge ${inv.role.toLowerCase()}">${roleLabels[inv.role] || inv.role}</span>
+            <span>Invited by ${inv.inviterName || 'someone'}</span>
+            <span>${timeAgo(inv.createdAt)}</span>
+          </div>
+        </div>
+        <button class="btn-icon danger" data-cancel="${inv.id}" title="Cancel invitation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    `).join('');
+
+    // Cancel handlers
+    $$('[data-cancel]', listEl).forEach(btn => {
+      btn.addEventListener('click', () => cancelInvitation(btn.dataset.cancel));
+    });
+  }
+
+  /* ==================================================================
+   *  DELETE /api/workspaces/{workspaceId}/invitations/{invitationId}
+   *
+   *  What it does:
+   *    Cancels a pending invitation (sets status to CANCELLED).
+   *    Only the inviter or workspace owner can cancel.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long), invitationId (Long)
+   *
+   *  Frontend expects (200):
+   *    { "message": "Invitation cancelled" }
+   *
+   *  Error: 403 forbidden, 404 not found
+   * ================================================================== */
+
+  async function cancelInvitation(invitationId) {
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/invitations/${invitationId}`, {
+      method: 'DELETE',
+    });
+
+    if (res.ok) {
+      showToast('Invitation cancelled', 'success');
+      await loadPendingInvites();
+    } else {
+      showToast(res.data.message || 'Failed to cancel', 'error');
+    }
+  }
+
+  // ─── Load Members ───
+
+  /* ==================================================================
+   *  GET /api/workspaces/{workspaceId}/members
+   *
+   *  What it does:
+   *    Returns all current members of the workspace (incl. the owner)
+   *    with their roles and profile info.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long)
+   *
+   *  Frontend expects (200):
+   *    {
+   *      "members": [
+   *        {
+   *          "id": 1,
+   *          "userId": 2,
+   *          "email": "john@company.com",
+   *          "fullName": "John Smith",
+   *          "username": "john",
+   *          "avatarUrl": "https://...",
+   *          "role": "OWNER",
+   *          "isOwner": true
+   *        },
+   *        {
+   *          "id": 3,
+   *          "userId": 5,
+   *          "email": "jane@company.com",
+   *          "fullName": "Jane Doe",
+   *          "username": "jane",
+   *          "avatarUrl": "https://...",
+   *          "role": "EDITOR",
+   *          "isOwner": false
+   *        }
+   *      ]
+   *    }
+   *
+   *  Error: 404 workspace not found, 403 forbidden
+   * ================================================================== */
+
+  async function loadMembers() {
+    const listEl = $('#member-list');
+    const countEl = $('#member-count');
+
+    listEl.innerHTML = `
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line"></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line"></div></div>
+      <div class="skeleton-row"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line"></div></div>
+    `;
+
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/members`);
+
+    if (!res.ok) {
+      listEl.innerHTML = '<div class="empty-state">Failed to load members</div>';
+      return;
+    }
+
+    const members = res.data.members || [];
+    countEl.textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`;
+
+    if (members.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">No members yet</div>';
+      return;
+    }
+
+    const roleLabels = { OWNER: 'Owner', EDITOR: 'Editor', VIEWER: 'Viewer' };
+    const currentUserId = document.documentElement.dataset.userId;
+
+    listEl.innerHTML = members.map(m => {
+      const avatarHtml = m.avatarUrl
+        ? `<img class="avatar" src="${m.avatarUrl}" alt="" />`
+        : `<div class="avatar-placeholder">${getInitials(m.fullName || m.username)}</div>`;
+
+      const canManage = !m.isOwner; // Can't change owner's role or remove owner
+      const isSelf = m.userId == currentUserId;
+
+      return `
+        <div class="member-item" data-member-id="${m.id}">
+          ${avatarHtml}
+          <div class="member-info">
+            <div class="name">
+              ${m.fullName || m.username}
+              ${m.isOwner ? '<span class="owner-tag">Owner</span>' : ''}
+            </div>
+            <div class="email">${m.email}</div>
+          </div>
+          <div class="member-actions">
+            ${canManage ? `
+              <select class="role-select" data-role-select="${m.id}" ${isSelf ? 'disabled title="You cannot change your own role"' : ''}>
+                <option value="EDITOR" ${m.role === 'EDITOR' ? 'selected' : ''}>Editor</option>
+                <option value="VIEWER" ${m.role === 'VIEWER' ? 'selected' : ''}>Viewer</option>
+              </select>
+            ` : `
+              <span class="role-badge ${m.role.toLowerCase()}">${roleLabels[m.role] || m.role}</span>
+            `}
+            ${canManage && !isSelf ? `
+              <button class="btn-icon danger" data-remove="${m.id}" title="Remove member">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Role change handlers
+    $$('[data-role-select]', listEl).forEach(sel => {
+      sel.addEventListener('change', () => updateMemberRole(sel.dataset.roleSelect, sel.value));
+    });
+
+    // Remove handlers
+    $$('[data-remove]', listEl).forEach(btn => {
+      btn.addEventListener('click', () => removeMember(btn.dataset.remove));
+    });
+  }
+
+  /* ==================================================================
+   *  PUT /api/workspaces/{workspaceId}/members/{memberId}/role
+   *
+   *  What it does:
+   *    Updates the role of a workspace member.
+   *    Only workspace owner can change roles.
+   *    Cannot change the owner's role.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long), memberId (Long — the WorkspaceWorker id)
+   *    Body: { "role": "EDITOR" }
+   *      role enum: "EDITOR", "VIEWER" (cannot set OWNER via this endpoint)
+   *
+   *  Frontend expects (200):
+   *    { "message": "Role updated" }
+   *
+   *  Error: 400 (invalid role), 403 (not owner), 404 (member not found)
+   * ================================================================== */
+
+  async function updateMemberRole(memberId, newRole) {
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/members/${memberId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role: newRole }),
+    });
+
+    if (res.ok) {
+      showToast('Role updated', 'success');
+    } else {
+      showToast(res.data.message || 'Failed to update role', 'error');
+      await loadMembers(); // revert UI
+    }
+  }
+
+  /* ==================================================================
+   *  DELETE /api/workspaces/{workspaceId}/members/{memberId}
+   *
+   *  What it does:
+   *    Removes a member from the workspace.
+   *    Only workspace owner can remove members.
+   *    Cannot remove the workspace owner.
+   *
+   *  Frontend sends:
+   *    Path: workspaceId (Long), memberId (Long — the WorkspaceWorker id)
+   *
+   *  Frontend expects (200):
+   *    { "message": "Member removed" }
+   *
+   *  Error: 403 (not owner), 404 (member not found)
+   * ================================================================== */
+
+  async function removeMember(memberId) {
+    if (!confirm('Remove this member from the workspace?')) return;
+
+    const res = await api(`/api/workspaces/${WORKSPACE_ID}/members/${memberId}`, {
+      method: 'DELETE',
+    });
+
+    if (res.ok) {
+      showToast('Member removed', 'success');
+      await loadMembers();
+      await loadPendingInvites();
+    } else {
+      showToast(res.data.message || 'Failed to remove member', 'error');
+    }
+  }
+
+  // ─── Helpers ───
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const now = new Date();
+    const d = new Date(dateStr);
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
+  // ─── Events ───
+
+  $('#search-input').addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    if (query.length >= 2) {
+      debouncedSearch(query);
+    } else {
+      $('#search-results').classList.remove('open');
+    }
+  });
+
+  // Close search results on click outside
+  document.addEventListener('click', (e) => {
+    const searchWrap = $('.search-wrap');
+    if (!searchWrap.contains(e.target)) {
+      $('#search-results').classList.remove('open');
+    }
+  });
+
+  // Close modal
+  $('#modal-close').addEventListener('click', () => {
+    $('#invite-modal').classList.remove('open');
+  });
+
+  $('#btn-done').addEventListener('click', () => {
+    $('#invite-modal').classList.remove('open');
+  });
+
+  // Click overlay to close
+  $('#invite-modal').addEventListener('click', (e) => {
+    if (e.target === $('#invite-modal')) {
+      $('#invite-modal').classList.remove('open');
+    }
+  });
+
+  // ─── Init ───
+
+  async function init() {
+    if (!WORKSPACE_ID) {
+      $('#workspace-name-display').textContent = 'No workspace selected';
+      return;
+    }
+    await loadWorkspaceName();
+    await Promise.all([
+      loadPendingInvites(),
+      loadMembers(),
+    ]);
+  }
+
+  init();
+
+  // Expose open function for parent to call
+  window.openInviteModal = function() {
+    $('#invite-modal').classList.add('open');
+    init();
+  };
+</script>
+</body>
+</html>
